@@ -86,6 +86,22 @@ export default function Blog() {
               </article>
             ))}
           </div>
+          
+          {/* CTA Section */}
+          <div className="mt-12 p-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl text-center">
+            <h3 className="text-2xl font-bold text-white mb-4">
+              🎁 Create Your Own Animated Greeting Card
+            </h3>
+            <p className="text-white/90 mb-6">
+              Use YOUR voice to create a personalized animated card. Perfect for birthdays, Mother's Day, or just because!
+            </p>
+            <Link 
+              href="/"
+              className="inline-block bg-white text-pink-600 px-8 py-3 rounded-full font-bold hover:shadow-lg transition-all"
+            >
+              Start Creating Free →
+            </Link>
+          </div>
         </div>
       </section>
 
