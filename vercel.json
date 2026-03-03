@@ -1,3 +1,5 @@
 {
-  "rootDirectory": "panimate"
+  "rootDirectory": "panimate",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next"
 }
