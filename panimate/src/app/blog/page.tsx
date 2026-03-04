@@ -1,24 +1,10 @@
 // Blog index page
 import Link from 'next/link';
+import { getAllBlogPosts } from '@/lib/blog';
 
-const blogPosts = [
-  {
-    slug: 'how-to-create-animated-video-from-voice',
-    title: 'How to Create Animated Videos from Voice: Complete 2026 Guide',
-    excerpt: 'Learn how to create animated videos from voice recordings. This step-by-step guide covers free and paid tools, best practices, and tips for professional results.',
-    date: 'March 3, 2026',
-    category: 'AI Animation',
-    readTime: '7 min read'
-  },
-  {
-    slug: 'best-ai-animated-greeting-cards',
-    title: 'Best AI Animated Greeting Cards in 2026: Compared & Reviewed',
-    excerpt: 'Discover the best AI animated greeting card platforms. Compare features, pricing, and quality to find the perfect tool for creating personalized animated cards.',
-    date: 'March 3, 2026',
-    category: 'Gift Ideas',
-    readTime: '6 min read'
-  }
-];
+export const dynamic = 'force-dynamic';
+
+const blogPosts = getAllBlogPosts();
 
 export default function Blog() {
   return (
