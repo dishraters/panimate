@@ -1,1 +1,6 @@
-{}
+{
+  "framework": "nextjs",
+  "installCommand": "cd panimate && npm install",
+  "buildCommand": "cd panimate && npm run build",
+  "outputDirectory": "panimate/.next"
+}
