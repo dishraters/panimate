@@ -1,275 +1,282 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-// v1.0.4 - deployment fix attempt 2
-
+// Card themes
 const THEMES = [
-  { id: 'happy', emoji: '😊', name: 'Happy', color: '#FFD700' },
-  { id: 'love', emoji: '💕', name: 'Love', color: '#FF69B4' },
-  { id: 'excited', emoji: '🎉', name: 'Excited', color: '#FF4500' },
-  { id: 'cool', emoji: '😎', name: 'Cool', color: '#4169E1' },
-  { id: 'cute', emoji: '🐱', name: 'Cute', color: '#FFB6C1' },
-  { id: 'magical', emoji: '✨', name: 'Magical', color: '#9370DB' },
+  { id: 'mom', emoji: '🌸', name: 'Mom', color: '#ec4899', bg: 'from-pink-300 to-purple-400', text: 'Happy Mother\'s Day!' },
+  { id: 'dad', emoji: '🎉', name: 'Dad', color: '#3b82f6', bg: 'from-blue-400 to-cyan-300', text: 'Happy Father\'s Day!' },
+  { id: 'love', emoji: '💕', name: 'Love', color: '#f43f5e', bg: 'from-rose-400 to-pink-400', text: 'I Love You!' },
+  { id: 'birthday', emoji: '🎂', name: 'Birthday', color: '#f59e0b', bg: 'from-yellow-400 to-orange-400', text: 'Happy Birthday!' },
+  { id: 'thanks', emoji: '🙏', name: 'Thanks', color: '#10b981', bg: 'from-emerald-400 to-teal-400', text: 'Thank You!' },
+  { id: 'congrats', emoji: '🎊', name: 'Congrats', color: '#8b5cf6', bg: 'from-violet-400 to-purple-400', text: 'Congratulations!' },
 ]
 
 export default function CreatePage() {
+  const router = useRouter()
   const [selectedTheme, setSelectedTheme] = useState(THEMES[0])
   const [isRecording, setIsRecording] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [audioLevel, setAudioLevel] = useState(0)
-  const [isPreview, setIsPreview] = useState(false)
-  const [showMagic, setShowMagic] = useState(false)
-  const [mouthOpen, setMouthOpen] = useState(0)
+  const [transcript, setTranscript] = useState('')
+  const [interimTranscript, setInterimTranscript] = useState('')
+  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string} | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [cardId, setCardId] = useState('')
   
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const animationRef = useRef<number | null>(null)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const mouthTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
-  // Simulate audio level when recording
   useEffect(() => {
-    if (isRecording) {
-      timerRef.current = setInterval(() => {
-        setRecordingTime(t => t + 1)
-        // Simulate audio level with random values
-        setAudioLevel(Math.random())
-        setMouthOpen(Math.random())
-        
-        // Draw waveform
-        if (canvasRef.current) {
-          const ctx = canvasRef.current.getContext('2d')
-          if (ctx) {
-            const width = canvasRef.current.width
-            const height = canvasRef.current.height
-            const barWidth = 3
-            const gap = 2
-            const bars = Math.floor(width / (barWidth + gap))
-            
-            ctx.fillStyle = '#1a1a2e'
-            ctx.fillRect(0, 0, width, height)
-            
-            ctx.fillStyle = selectedTheme.color
-            for (let i = 0; i < bars; i++) {
-              const barHeight = Math.random() * height * 0.8 + height * 0.1
-              const x = i * (barWidth + gap)
-              const y = (height - barHeight) / 2
-              ctx.fillRect(x, y, barWidth, barHeight)
-            }
-          }
-        }
-      }, 50)
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current)
-      setAudioLevel(0)
-    }
+    // Check for Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
     
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+    if (!SpeechRecognition) {
+      alert('Speech recognition not supported in this browser. Try Chrome or Edge.')
+      return
     }
-  }, [isRecording, selectedTheme.color])
 
-  // Idle animation
-  useEffect(() => {
-    if (!isRecording && !isPreview) {
-      const breathe = () => {
-        setMouthOpen(prev => {
-          const newVal = Math.sin(Date.now() / 1000) * 0.2 + 0.2
-          return newVal
-        })
+    const recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = ''
+      let final = ''
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          final += transcript + ' '
+        } else {
+          interim += transcript
+        }
       }
-      const interval = setInterval(breathe, 50)
-      return () => clearInterval(interval)
+      
+      if (final) {
+        setTranscript(prev => prev + final)
+      }
+      setInterimTranscript(interim)
     }
-  }, [isRecording, isPreview])
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error)
+      setIsRecording(false)
+    }
+
+    recognition.onend = () => {
+      if (isRecording) {
+        // Restart if still supposed to be recording
+        recognition.start()
+      }
+    }
+
+    recognitionRef.current = recognition
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [isRecording])
 
   const startRecording = () => {
+    setTranscript('')
+    setInterimTranscript('')
     setIsRecording(true)
-    setRecordingTime(0)
-    setIsPreview(false)
-    setShowMagic(false)
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start()
+      } catch (e) {
+        console.error('Failed to start recognition:', e)
+      }
+    }
   }
 
   const stopRecording = () => {
     setIsRecording(false)
-    if (timerRef.current) clearInterval(timerRef.current)
-    setShowMagic(true)
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+  }
+
+  const generateCard = () => {
+    if (!transcript.trim()) {
+      alert('Please record a message first!')
+      return
+    }
+
+    setIsGenerating(true)
     
-    // After celebration, show preview
+    // Simulate card generation
     setTimeout(() => {
-      setShowMagic(false)
-      setIsPreview(true)
-      // Simulate mouth movement during preview
-      mouthTimerRef.current = setInterval(() => {
-        setMouthOpen(Math.random() * 0.8 + 0.2)
-      }, 100)
-    }, 2000)
+      // Generate a unique card ID
+      const id = Math.random().toString(36).substring(2, 10)
+      setCardId(id)
+      setGeneratedCard({
+        text: transcript.trim(),
+        audioUrl: ''
+      })
+      setIsGenerating(false)
+    }, 1500)
   }
 
-  const resetRecording = () => {
-    setIsRecording(false)
-    setIsPreview(false)
-    setShowMagic(false)
-    setRecordingTime(0)
-    setMouthOpen(0)
-    setAudioLevel(0)
-    if (mouthTimerRef.current) clearInterval(mouthTimerRef.current)
+  const resetAndRecordAgain = () => {
+    setTranscript('')
+    setInterimTranscript('')
+    setGeneratedCard(null)
+    setCardId('')
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  const shareCard = () => {
+    const shareUrl = `https://panimate.vercel.app/card/${cardId}`
+    navigator.clipboard.writeText(shareUrl)
+    alert('Link copied to clipboard! Send it to your loved one.')
+  }
+
+  // If we have a generated card, show it
+  if (generatedCard) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 flex flex-col">
+        {/* Header */}
+        <header className="p-4 flex justify-between items-center bg-white/50 backdrop-blur">
+          <button onClick={() => router.push('/')} className="text-2xl font-bold text-pink-600">✨ Panimate</button>
+        </header>
+
+        {/* Generated Card */}
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            {/* Card Preview */}
+            <div className={`bg-gradient-to-br ${selectedTheme.bg} rounded-3xl p-8 shadow-2xl text-center relative overflow-hidden`}>
+              {/* Decorative elements */}
+              <div className="absolute top-4 left-4 text-4xl">{selectedTheme.emoji}</div>
+              <div className="absolute top-4 right-4 text-4xl">✨</div>
+              <div className="absolute bottom-4 left-4 text-4xl">💫</div>
+              <div className="absolute bottom-4 right-4 text-4xl">{selectedTheme.emoji}</div>
+              
+              {/* Message */}
+              <div className="relative z-10 py-8">
+                <p className="text-3xl font-bold text-white drop-shadow-lg mb-4">{selectedTheme.text}</p>
+                <div className="bg-white/90 rounded-2xl p-6 shadow-inner">
+                  <p className="text-gray-800 text-xl leading-relaxed italic">"{generatedCard.text}"</p>
+                </div>
+                <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={resetAndRecordAgain}
+                className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-full font-bold hover:bg-gray-300"
+              >
+                🔄 Record Again
+              </button>
+              <button 
+                onClick={shareCard}
+                className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-bold hover:opacity-90"
+              >
+                📤 Share Card
+              </button>
+            </div>
+
+            {/* Share Link */}
+            <div className="mt-4 p-4 bg-white rounded-xl shadow">
+              <p className="text-sm text-gray-500 mb-2">Share this link:</p>
+              <code className="text-xs bg-gray-100 p-2 rounded block truncate">
+                https://panimate.vercel.app/card/{cardId}
+              </code>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a1a2e] to-[#0d0d1a] flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 flex flex-col">
       {/* Header */}
-      <header className="p-4 flex justify-between items-center">
-        <a href="/" className="text-2xl font-bold text-white">Panimate</a>
-        <a href="/" className="text-sm text-gray-400 hover:text-white">← Back</a>
+      <header className="p-4 flex justify-between items-center bg-white/50 backdrop-blur">
+        <button onClick={() => router.push('/')} className="text-2xl font-bold text-pink-600">✨ Panimate</button>
+        <a href="/" className="text-gray-500 hover:text-gray-700">← Back</a>
       </header>
 
-      {/* Main Canvas Area */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
-        {/* Animation Canvas */}
-        <div 
-          className="relative w-80 h-80 rounded-full overflow-hidden mb-8"
-          style={{ 
-            background: `radial-gradient(circle, ${selectedTheme.color}33 0%, transparent 70%)`,
-            boxShadow: `0 0 60px ${selectedTheme.color}44`
-          }}
-        >
-          {/* Animated Character */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            {/* Face */}
-            <div 
-              className="w-48 h-48 rounded-full flex items-center justify-center transition-all duration-100"
-              style={{ 
-                backgroundColor: selectedTheme.color,
-                transform: `scale(${1 + mouthOpen * 0.1})`
-              }}
-            >
-              {/* Eyes */}
-              <div className="flex gap-8 -mt-2">
-                <div className={`w-6 h-8 bg-white rounded-full relative ${isRecording || isPreview ? 'animate-bounce' : ''}`}>
-                  <div className="absolute w-3 h-3 bg-black rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                </div>
-                <div className="w-6 h-8 bg-white rounded-full relative">
-                  <div className="absolute w-3 h-3 bg-black rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                </div>
-              </div>
-              
-              {/* Mouth */}
-              <div 
-                className="absolute bg-black rounded-full transition-all duration-75"
-                style={{ 
-                  width: `${20 + mouthOpen * 30}px`,
-                  height: `${10 + mouthOpen * 20}px`,
-                  bottom: '40px'
-                }}
-              />
-              
-              {/* Cheeks */}
-              <div className="absolute w-8 h-4 bg-white/30 rounded-full -left-4 top-1/2" />
-              <div className="absolute w-8 h-4 bg-white/30 rounded-full -right-4 top-1/2" />
-            </div>
-          </div>
-          
-          {/* Celebration Effect */}
-          {showMagic && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              {Array.from({ length: 20 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute animate-ping"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    animationDelay: `${i * 0.1}s`
-                  }}
-                >
-                  ✨
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Create a Voice Card</h1>
+        <p className="text-gray-600 mb-8">Record your voice, we'll turn it into a beautiful card</p>
 
-        {/* Magic Toast */}
-        {showMagic && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full animate-bounce">
-            <span className="text-white">✨ Your magic is ready!</span>
-          </div>
-        )}
-
-        {/* Waveform Visualizer */}
-        <canvas 
-          ref={canvasRef}
-          width={300}
-          height={60}
-          className={`mb-8 rounded-lg transition-opacity duration-200 ${isRecording ? 'opacity-100' : 'opacity-30'}`}
-        />
-
-        {/* Theme Tray */}
+        {/* Theme Picker */}
         <div className="flex gap-3 mb-8 overflow-x-auto pb-2 max-w-full">
           {THEMES.map(theme => (
             <button
               key={theme.id}
-              onClick={() => !isRecording && setSelectedTheme(theme)}
-              disabled={isRecording}
+              onClick={() => setSelectedTheme(theme)}
               className={`flex-shrink-0 px-4 py-2 rounded-full border-2 transition-all ${
                 selectedTheme.id === theme.id 
-                  ? 'border-white scale-110' 
-                  : 'border-transparent opacity-60 hover:opacity-100'
+                  ? 'border-gray-800 scale-110 shadow-lg' 
+                  : 'border-transparent opacity-70 hover:opacity-100'
               }`}
               style={{ 
-                backgroundColor: `${theme.color}33`,
-                borderColor: selectedTheme.id === theme.id ? theme.color : 'transparent'
+                backgroundColor: theme.color + '20'
               }}
             >
-              <span className="text-2xl mr-2">{theme.emoji}</span>
-              <span className="text-white text-sm">{theme.name}</span>
+              <span className="text-xl mr-1">{theme.emoji}</span>
+              <span className="text-gray-700 text-sm font-medium">{theme.name}</span>
             </button>
           ))}
         </div>
 
-        {/* Hold to Record Button */}
-        <button
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          onTouchStart={startRecording}
-          onTouchEnd={stopRecording}
-          className={`w-32 h-32 rounded-full flex flex-col items-center justify-center transition-all ${
-            isRecording 
-              ? 'bg-red-500 scale-90 animate-pulse' 
-              : 'bg-gradient-to-br from-pink-500 to-purple-500 hover:scale-105'
-          }`}
-        >
-          <span className="text-4xl mb-1">{isRecording ? '⏺' : '🎤'}</span>
-          <span className="text-white text-xs font-medium">
-            {isRecording ? formatTime(recordingTime) : 'Hold to Record'}
-          </span>
-        </button>
+        {/* Card Preview */}
+        <div className={`w-64 h-40 bg-gradient-to-br ${selectedTheme.bg} rounded-2xl p-4 shadow-lg mb-8 flex items-center justify-center`}>
+          <span className="text-5xl">{selectedTheme.emoji}</span>
+        </div>
 
-        {/* Preview Controls */}
-        {isPreview && (
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={resetRecording}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-full text-white"
-            >
-              🔄 Re-record
-            </button>
-            <button
-              className="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 hover:opacity-90 rounded-full text-white font-medium"
-            >
-              📤 Share Magic
-            </button>
+        {/* Recording Area */}
+        <div className="w-full max-w-md">
+          {/* Transcript Display */}
+          <div className="bg-white rounded-2xl p-4 mb-4 min-h-[100px] shadow-inner">
+            <p className="text-gray-800">
+              {transcript}
+              <span className="text-gray-400">{interimTranscript}</span>
+              {!transcript && !interimTranscript && (
+                <span className="text-gray-400 italic">
+                  {isRecording ? 'Listening...' : 'Press the button and start talking...'}
+                </span>
+              )}
+            </p>
           </div>
-        )}
+
+          {/* Record Button */}
+          <div className="flex flex-col items-center">
+            <button
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              className={`w-24 h-24 rounded-full flex flex-col items-center justify-center transition-all shadow-xl ${
+                isRecording 
+                  ? 'bg-red-500 scale-90 animate-pulse' 
+                  : 'bg-gradient-to-br from-pink-500 to-purple-600 hover:scale-105'
+              }`}
+            >
+              <span className="text-4xl mb-1">{isRecording ? '⏹️' : '🎤'}</span>
+            </button>
+            <p className="text-gray-500 mt-2 text-sm">
+              {isRecording ? 'Release to stop' : 'Hold to record'}
+            </p>
+          </div>
+
+          {/* Generate Button */}
+          {transcript && !isRecording && (
+            <button
+              onClick={generateCard}
+              disabled={isGenerating}
+              className="w-full mt-6 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-bold text-lg hover:opacity-90 disabled:opacity-50"
+            >
+              {isGenerating ? '🎨 Generating your card...' : '✨ Create My Card'}
+            </button>
+          )}
+        </div>
       </main>
 
       {/* Footer */}
@@ -278,4 +285,12 @@ export default function CreatePage() {
       </footer>
     </div>
   )
+}
+
+// Add type declarations for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition
+    webkitSpeechRecognition: typeof SpeechRecognition
+  }
 }

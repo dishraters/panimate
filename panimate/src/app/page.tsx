@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
+import Head from 'next/head';
+import Link from 'next/link';
+
 export default function Panimate() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -107,12 +110,12 @@ export default function Panimate() {
             🎁 The ONLY gift that uses THEIR favorite voice to deliver a personalized animated message they'll treasure forever.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <button 
-              onClick={() => scrollTo('waitlist')}
+            <Link 
+              href="/create"
               className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:shadow-xl hover:scale-105 transition-all animate-pulse"
             >
-              🎁 Make Your Mother's Day Card — Free Preview
-            </button>
+              🎁 Create a Card Now
+            </Link>
             <button 
               onClick={() => scrollTo('how-it-works')}
               className="bg-white text-gray-700 px-8 py-4 rounded-full font-bold text-lg border-2 border-gray-200 hover:border-pink-300 hover:shadow-lg transition-all"
