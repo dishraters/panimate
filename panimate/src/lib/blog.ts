@@ -15,6 +15,10 @@ export interface BlogPost {
 }
 
 export function getAllBlogPosts(): BlogPost[] {
+  if (!fs.existsSync(blogDir)) {
+    return [];
+  }
+  
   const files = fs.readdirSync(blogDir);
   
   const posts = files
@@ -40,6 +44,10 @@ export function getAllBlogPosts(): BlogPost[] {
 
 export function getBlogPost(slug: string): BlogPost | null {
   try {
+    if (!fs.existsSync(blogDir)) {
+      return null;
+    }
+    
     const filePath = path.join(blogDir, `${slug}.mdx`);
     
     if (!fs.existsSync(filePath)) {
@@ -49,7 +57,8 @@ export function getBlogPost(slug: string): BlogPost | null {
       }
     }
 
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    const finalPath = fs.existsSync(filePath) ? filePath : path.join(blogDir, `${slug}.md`);
+    const fileContent = fs.readFileSync(finalPath, 'utf-8');
     const { data, content } = matter(fileContent);
 
     return {
