@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 
-// v1.0.3 - deployment fix
+// v1.0.4 - deployment fix attempt 2
 
 const THEMES = [
   { id: 'happy', emoji: '😊', name: 'Happy', color: '#FFD700' },
