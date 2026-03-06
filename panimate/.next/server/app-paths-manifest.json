@@ -3,6 +3,6 @@
   "/card/[id]/page": "app/card/[id]/page.js",
   "/create/page": "app/create/page.js",
   "/page": "app/page.js",
-  "/blog/page": "app/blog/page.js",
-  "/blog/[slug]/page": "app/blog/[slug]/page.js"
+  "/blog/[slug]/page": "app/blog/[slug]/page.js",
+  "/blog/page": "app/blog/page.js"
 }

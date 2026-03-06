@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Player } from '@lottiefiles/react-lottie-player'
 
 // Pricing tiers
 const TIERS = {
@@ -22,12 +23,20 @@ const THEMES = [
 
 const MAX_BUBBLES = 12
 
-// Keyword to SVG symbol mapping
+// Keyword to SVG symbol mapping (free tier)
 const KEYWORD_MAP: Record<string, string> = {
   'love': 'svg-heart', 'loved': 'svg-heart', 'heart': 'svg-heart',
   'mom': 'svg-flower', 'mother': 'svg-flower', 'beautiful': 'svg-flower', 'pretty': 'svg-flower',
   'smart': 'svg-star', 'amazing': 'svg-star', 'wonderful': 'svg-star',
   'smile': 'svg-smile', 'smiling': 'svg-smile', 'funny': 'svg-smile', 'happy': 'svg-smile', 'laugh': 'svg-smile',
+}
+
+// Keyword to Lottie animation mapping (Pro tier)
+const LOTTIE_KEYWORD_MAP: Record<string, string> = {
+  'love': 'heart', 'loved': 'heart', 'heart': 'heart',
+  'mom': 'flower', 'mother': 'flower', 'beautiful': 'flower', 'pretty': 'flower',
+  'smart': 'star', 'amazing': 'star', 'wonderful': 'star',
+  'smile': 'smile', 'smiling': 'smile', 'funny': 'smile', 'happy': 'smile', 'laugh': 'smile',
 }
 
 // Guided script for user to say
@@ -64,6 +73,10 @@ function CreatePageContent() {
   const [triggeredKeywords, setTriggeredKeywords] = useState<Set<string>>(new Set())
   const [svgAnimations, setSvgAnimations] = useState<Array<{id: number; symbolId: string}>>([])
   const animationIdRef = useRef(0)
+  
+  // Pro tier Lottie animation state
+  const [lottieAnims, setLottieAnims] = useState<string[]>([])
+  const lottieTriggeredRef = useRef<Set<string>>(new Set())
   
   const recognitionRef = useRef<any>(null)
   const isRecordingRef = useRef(false)
