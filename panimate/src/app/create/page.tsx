@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import Lottie from 'lottie-react'
 
-// Dynamically import Lottie Player to avoid SSR issues
-const Player = dynamic(() => import('@lottiefiles/react-lottie-player').then(mod => mod.Player), {
+// Dynamically import Lottie component to avoid SSR issues
+const LottieComponent = dynamic(() => Promise.resolve(Lottie), {
   ssr: false,
   loading: () => <div className="w-12 h-12" />
 })
@@ -48,6 +49,28 @@ const LOTTIE_KEYWORD_MAP: Record<string, string> = {
 // Guided script for user to say
 const GUIDED_SCRIPT = "Hi Mom — you are so beautiful, you make me smile, and I love you."
 
+// Helper component to load and display Lottie animations
+function LottieAnimation({ animName }: { animName: string }) {
+  const [animationData, setAnimationData] = useState<any>(null)
+  
+  useEffect(() => {
+    const loadAnimation = async () => {
+      try {
+        const response = await fetch(`/animations/${animName}.json`)
+        const data = await response.json()
+        setAnimationData(data)
+      } catch (err) {
+        console.error(`Failed to load animation ${animName}:`, err)
+      }
+    }
+    loadAnimation()
+  }, [animName])
+  
+  if (!animationData) return <div className="w-full h-full" />
+  
+  return <Lottie animationData={animationData} loop autoplay style={{ width: '100%', height: '100%' }} />
+}
+
 export default function CreatePage() {
   const router = useRouter()
   
@@ -84,10 +107,16 @@ function CreatePageContent() {
   const [lottieAnims, setLottieAnims] = useState<string[]>([])
   const lottieTriggeredRef = useRef<Set<string>>(new Set())
   
+  // Voice recording state
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  
   const recognitionRef = useRef<any>(null)
   const isRecordingRef = useRef(false)
   const lastFinalRef = useRef('')
   const svgStageRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   // Trigger animation reflow when new SVG is added
   useEffect(() => {
@@ -115,7 +144,7 @@ function CreatePageContent() {
     }
   }, [])
 
-  const startRecording = () => {
+  const startRecording = async () => {
     if (!browserSupported) return
     
     const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -133,6 +162,33 @@ function CreatePageContent() {
     setSvgAnimations([])
     setLottieAnims([])
     lottieTriggeredRef.current = new Set()
+    
+    // Start audio recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+      
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data)
+      }
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        setAudioBlob(audioBlob)
+        // Log that audio was captured
+        console.log('Audio captured:', audioBlob.size, 'bytes')
+        // Stop all audio tracks
+        stream.getTracks().forEach(track => track.stop())
+      }
+      
+      mediaRecorder.start()
+      console.log('Audio recording started')
+    } catch (err) {
+      console.error('Failed to start audio recording:', err)
+      setError('Microphone access was denied. Please allow microphone access in your browser settings.')
+    }
     
     // Create a BRAND NEW SpeechRecognition instance each time
     const recognition = new SpeechRecognition()
@@ -267,6 +323,12 @@ function CreatePageContent() {
         recognitionRef.current.stop()
       } catch (e) {}
     }
+    
+    // Stop audio recording
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      console.log('Audio recording stopped')
+    }
   }
 
   const clearAll = () => {
@@ -276,6 +338,8 @@ function CreatePageContent() {
     lastFinalRef.current = ''
     setError(null)
     setShowDone(false)
+    setAudioUrl(null)
+    setAudioBlob(null)
   }
 
   const generateCard = () => {
@@ -315,6 +379,8 @@ function CreatePageContent() {
     lastFinalRef.current = ''
     setLottieAnims([])
     lottieTriggeredRef.current = new Set()
+    setAudioUrl(null)
+    setAudioBlob(null)
   }
 
   const shareCard = () => {
@@ -359,16 +425,13 @@ function CreatePageContent() {
                 {generatedCard.tier !== 'free' && generatedCard.lottieAnims && generatedCard.lottieAnims.length > 0 && (
                   <div className="flex justify-center gap-4 mt-4">
                     {generatedCard.lottieAnims.map((anim, index) => (
-                      <div key={index} className="w-16 h-16">
-                        <Player
-                          autoplay
-                          loop
-                          src={`/animations/${anim}.json`}
-                          style={{ width: '100%', height: '100%' }}
-                        />
-                      </div>
+                      <LottieAnimation key={index} animName={anim} />
                     ))}
                   </div>
+                )}
+                {/* Audio playback placeholder */}
+                {generatedCard.tier !== 'free' && (
+                  <p className="text-white/60 text-sm mt-2">🎵 Audio would play here</p>
                 )}
                 <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
               </div>
@@ -582,12 +645,7 @@ function CreatePageContent() {
                     height: '50px',
                   }}
                 >
-                  <Player
-                    autoplay
-                    loop
-                    src={`/animations/${anim}.json`}
-                    style={{ width: '100%', height: '100%' }}
-                  />
+                  <LottieAnimation animName={anim} />
                 </div>
               ))}
             </div>
