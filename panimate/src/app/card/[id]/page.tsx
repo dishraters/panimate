@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { supabase } from '@/lib/supabase'
+
+// Dynamically import Player to avoid SSR issues  
+const Player = dynamic(() => import('@lottiefiles/react-lottie-player').then((mod) => mod.Player), {
+  ssr: false,
+  loading: () => null
+})
 
 // Card themes
 const THEMES = [
@@ -24,25 +32,50 @@ export default function CardPage() {
   const router = useRouter()
   const cardId = params.id as string
   
-  const [cardData, setCardData] = useState<{text: string; themeId: string} | null>(null)
+  const [cardData, setCardData] = useState<{text: string; themeId: string; animations?: string[]; tier?: string} | null>(null)
   const [loading, setLoading] = useState(true)
   const [theme, setTheme] = useState(THEMES[0])
 
   useEffect(() => {
-    // In production, fetch from database
-    // For now, check mock data or use a default
-    const data = MOCK_CARDS[cardId]
-    if (data) {
-      setCardData(data)
-      const foundTheme = THEMES.find(t => t.id === data.themeId) || THEMES[0]
-      setTheme(foundTheme)
-    } else {
-      // Demo card for unknown IDs
-      setCardData({ text: 'This is a demo card! Create your own voice card at Panimate.', themeId: 'love' })
-      setTheme(THEMES[2])
+    async function fetchCard() {
+      // Try to fetch from Supabase
+      const { data, error } = await supabase
+        .from('cards')
+        .select('transcript, category, animations, tier')
+        .eq('id', cardId)
+        .single()
+      
+      if (data && !error) {
+        setCardData({
+          text: data.transcript,
+          themeId: data.category,
+          animations: data.animations,
+          tier: data.tier
+        })
+        const foundTheme = THEMES.find(t => t.id === data.category) || THEMES[0]
+        setTheme(foundTheme)
+      } else {
+        // Fallback to mock data for demo
+        const mockData = MOCK_CARDS[cardId]
+        if (mockData) {
+          setCardData(mockData)
+          const foundTheme = THEMES.find(t => t.id === mockData.themeId) || THEMES[0]
+          setTheme(foundTheme)
+        } else {
+          // Demo card for unknown IDs
+          setCardData({ text: 'This is a demo card! Create your own voice card at Panimate.', themeId: 'love' })
+          setTheme(THEMES[2])
+        }
+      }
+      setLoading(false)
     }
-    setLoading(false)
+    
+    fetchCard()
   }, [cardId])
+
+  // Check if this is a Pro card with animations
+  const isPro = cardData?.tier === 'pro' || cardData?.tier === 'premium'
+  const hasAnimations = cardData?.animations && cardData.animations.length > 0
 
   if (loading) {
     return (
@@ -87,6 +120,15 @@ export default function CardPage() {
               <div className="bg-white/90 rounded-2xl p-6 shadow-inner">
                 <p className="text-gray-800 text-xl leading-relaxed italic">"{cardData.text}"</p>
               </div>
+              {/* Celebration Animation (Pro tier) */}
+              {hasAnimations && Player && (
+                <Player
+                  autoplay
+                  keepLastFrame
+                  src="/animations/celebration.json"
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.6 }}
+                />
+              )}
               <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
             </div>
           </div>

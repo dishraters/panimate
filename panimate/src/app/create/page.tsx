@@ -285,6 +285,7 @@ function CreatePageContent() {
         id: cardId,
         transcript: transcript.trim(),
         category: selectedTheme.id,
+        tier: selectedTier,
         audio_url: audioObjectUrl || null,
         animations: isPro ? ['celebration'] : []
       })
