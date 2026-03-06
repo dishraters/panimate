@@ -4,6 +4,20 @@ import { getAllBlogPosts } from '@/lib/blog';
 
 export const dynamic = 'force-dynamic';
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
 const blogPosts = getAllBlogPosts();
 
 export default function Blog() {
@@ -50,7 +64,7 @@ export default function Blog() {
                     <span className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full font-medium">
                       {post.category}
                     </span>
-                    <span>{post.date}</span>
+                    <span>{formatDate(post.date)}</span>
                     <span>•</span>
                     <span>{post.readTime}</span>
                   </div>

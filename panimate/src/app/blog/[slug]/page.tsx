@@ -6,6 +6,20 @@ import ReactMarkdown from 'react-markdown';
 
 export const dynamic = 'force-dynamic';
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
 export function generateStaticParams() {
   const posts = getAllBlogPosts();
   return posts.map((post) => ({ slug: post.slug }));
@@ -51,7 +65,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
             <span className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full font-medium">
               {post.category}
             </span>
-            <span>{post.date}</span>
+            <span>{formatDate(post.date)}</span>
             <span>•</span>
             <span>{post.readTime}</span>
           </div>

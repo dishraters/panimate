@@ -1,4 +1,4 @@
-// File: /Users/nancy/.openclaw/workspace/panimate-repo/panimate/src/app/blog/page.tsx
+// File: /Users/nancy/.openclaw/workspace/panimate/panimate/src/app/blog/page.tsx
 import * as entry from '../../../../src/app/blog/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
