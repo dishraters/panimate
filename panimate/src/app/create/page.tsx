@@ -55,32 +55,6 @@ const LOTTIE_KEYWORD_MAP: Record<string, string> = {
 // Guided script for user to say
 const GUIDED_SCRIPT = "Hi Mom — you are so beautiful, you make me smile, and I love you."
 
-// Helper component to load and display Lottie animations
-function LottieAnimation({ animName }: { animName: string }) {
-  const [animationData, setAnimationData] = useState<any>(null)
-  const [hasError, setHasError] = useState(false)
-  
-  useEffect(() => {
-    const loadAnimation = async () => {
-      try {
-        const response = await fetch(`/animations/${animName}.json`)
-        if (!response.ok) throw new Error(`Failed to load ${animName}`)
-        const data = await response.json()
-        setAnimationData(data)
-      } catch (err) {
-        console.warn('Lottie failed to load:', animName, err)
-        setHasError(true)
-      }
-    }
-    setHasError(false)
-    loadAnimation()
-  }, [animName])
-  
-  if (hasError || !animationData) return <div className="w-full h-full" />
-  
-  return <Lottie animationData={animationData} loop autoplay style={{ width: '100%', height: '100%' }} />
-}
-
 export default function CreatePage() {
   const router = useRouter()
   
@@ -103,15 +77,15 @@ function CreatePageContent() {
   const [showDone, setShowDone] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
-  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string; tier: string; lottieAnims?: string[]} | null>(null)
+  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string; tier: string} | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [cardId, setCardId] = useState('')
   const [wordBubbles, setWordBubbles] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [browserSupported, setBrowserSupported] = useState(true)
-  const [triggeredKeywords, setTriggeredKeywords] = useState<Set<string>>(new Set())
-  const [svgAnimations, setSvgAnimations] = useState<Array<{id: number; symbolId: string}>>([])
-  const animationIdRef = useRef(0)
+  
+  // Simple Pro check
+  const isPro = selectedTier === 'pro' || selectedTier === 'premium'
   
   // Pro tier Lottie animation state
   const [lottieAnims, setLottieAnims] = useState<string[]>([])
@@ -124,25 +98,8 @@ function CreatePageContent() {
   const recognitionRef = useRef<any>(null)
   const isRecordingRef = useRef(false)
   const lastFinalRef = useRef('')
-  const svgStageRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
-
-  // Trigger animation reflow when new SVG is added
-  useEffect(() => {
-    if (svgStageRef.current && svgAnimations.length > 0) {
-      // Force reflow
-      void svgStageRef.current.offsetWidth
-      // Re-enable animations by toggling a class
-      const svgs = svgStageRef.current.querySelectorAll('svg')
-      svgs.forEach(svg => {
-        svg.classList.remove('animate-draw')
-        // Force reflow using getBoundingClientRect
-        svg.getBoundingClientRect()
-        svg.classList.add('animate-draw')
-      })
-    }
-  }, [svgAnimations.length])
 
   useEffect(() => {
     // Check for Web Speech API support only
@@ -232,59 +189,6 @@ function CreatePageContent() {
           const updated = [...prev, ...words].slice(-MAX_BUBBLES)
           return updated
         })
-        
-        // Check for keyword triggers
-        const lowerText = final.toLowerCase()
-        
-        // Free tier: SVG keyword triggers
-        const foundKeywords = Object.keys(KEYWORD_MAP).filter(keyword => 
-          lowerText.includes(keyword)
-        )
-        
-        // Pro tier: Lottie keyword triggers
-        const foundLottieKeywords = Object.keys(LOTTIE_KEYWORD_MAP).filter(keyword => 
-          lowerText.includes(keyword)
-        )
-        
-        console.log('keyword check:', final, '-> found:', foundKeywords, 'lottie:', foundLottieKeywords)
-        
-        foundKeywords.forEach(keyword => {
-          if (!triggeredKeywords.has(keyword)) {
-            const symbolId = KEYWORD_MAP[keyword]
-            setTriggeredKeywords(prev => {
-              const newSet = new Set(Array.from(prev))
-              newSet.add(keyword)
-              return newSet
-            })
-            setSvgAnimations(prev => {
-              const newAnimations = [...prev, { id: ++animationIdRef.current, symbolId }]
-              // Cap at 4 icons max
-              if (newAnimations.length > 4) {
-                newAnimations.shift()
-              }
-              return newAnimations
-            })
-          }
-        })
-        
-        // Pro tier: Add Lottie animations
-        if (selectedTier !== 'free') {
-          foundLottieKeywords.forEach(keyword => {
-            if (!lottieTriggeredRef.current.has(keyword)) {
-              lottieTriggeredRef.current.add(keyword)
-              const animFile = LOTTIE_KEYWORD_MAP[keyword]
-              console.log('lottie trigger:', keyword, '->', animFile)
-              setLottieAnims(prev => {
-                const updated = [...prev, animFile]
-                // Cap at 3 Lottie animations max
-                if (updated.length > 3) {
-                  updated.shift()
-                }
-                return updated
-              })
-            }
-          })
-        }
       }
       setInterimTranscript(interim)
     }
@@ -343,7 +247,7 @@ function CreatePageContent() {
   }
 
   const clearAll = () => {
-    // FIX 3: Reset everything only on clear
+    // Reset everything only on clear
     setTranscript('')
     setInterimTranscript('')
     setWordBubbles([])
@@ -352,11 +256,6 @@ function CreatePageContent() {
     setShowDone(false)
     setAudioUrl(null)
     setAudioBlob(null)
-    // Also clear animations
-    setTriggeredKeywords(new Set())
-    setSvgAnimations([])
-    setLottieAnims([])
-    lottieTriggeredRef.current = new Set()
   }
 
   const generateCard = () => {
@@ -381,7 +280,6 @@ function CreatePageContent() {
         text: transcript.trim(),
         audioUrl: '',
         tier: selectedTier,
-        lottieAnims: selectedTier !== 'free' ? lottieAnims : undefined
       })
       setIsGenerating(false)
     }, 1500)
@@ -394,8 +292,6 @@ function CreatePageContent() {
     setCardId('')
     setWordBubbles([])
     lastFinalRef.current = ''
-    setLottieAnims([])
-    lottieTriggeredRef.current = new Set()
     setAudioUrl(null)
     setAudioBlob(null)
   }
@@ -438,23 +334,21 @@ function CreatePageContent() {
                 <div className="bg-white/90 rounded-2xl p-6 shadow-inner">
                   <p className="text-gray-800 text-xl leading-relaxed italic">"{generatedCard.text}"</p>
                 </div>
-                {/* Lottie Animations on Card (Pro tier) */}
-                {generatedCard.tier !== 'free' && (generatedCard.lottieAnims ?? []).length > 0 && (
-                  <div className="flex justify-center gap-4 mt-4">
-                    {(generatedCard.lottieAnims ?? []).map((anim, index) => (
-                      <Player
-                        key={`${anim}-${index}`}
-                        autoplay
-                        keepLastFrame
-                        src={`/animations/${anim}.json`}
-                        style={{ width: 72, height: 72 }}
-                      />
-                    ))}
-                  </div>
+                {/* Celebration Animation on Card (Pro tier) */}
+                {isPro && (
+                  <Player
+                    autoplay
+                    keepLastFrame
+                    src="/animations/celebration.json"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.7 }}
+                  />
                 )}
-                {/* Audio recording indicator */}
-                {generatedCard.tier !== 'free' && (
-                  <p className="text-gray-400 text-sm mt-2">Audio recording captured ✓</p>
+                {/* Audio playback (Pro tier) */}
+                {isPro && audioBlob && (
+                  <audio controls autoPlay src={URL.createObjectURL(audioBlob)} style={{ width: '100%', marginTop: 8, borderRadius: 8 }} />
+                )}
+                {isPro && !audioBlob && (
+                  <p className="text-gray-400 text-sm mt-2">🔊 Play voice message</p>
                 )}
                 <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
               </div>
@@ -638,50 +532,6 @@ function CreatePageContent() {
               </span>
             ))}
           </div>
-          
-          {/* SVG Animations Stage (Free tier) */}
-          <div ref={svgStageRef} className="absolute inset-0 pointer-events-none svg-stage">
-            {selectedTier === 'free' && svgAnimations.map((anim, index) => (
-              <div 
-                key={anim.id}
-                className="absolute"
-                style={{
-                  top: `${15 + index * 20}%`,
-                  left: `${15 + (index % 2) * 50}%`,
-                  width: '40px',
-                  height: '40px',
-                }}
-              >
-                <svg 
-                  viewBox="0 0 100 100" 
-                  className="w-full h-full animate-draw"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <use href={`#${anim.symbolId}`} />
-                </svg>
-              </div>
-            ))}
-          </div>
-          
-          {/* Lottie Animations Stage (Pro tier) */}
-          {selectedTier !== 'free' && (lottieAnims ?? []).length > 0 && (
-            <div className="absolute inset-0 pointer-events-none">
-              {lottieAnims.map((anim, index) => (
-                <div 
-                  key={index}
-                  className="absolute"
-                  style={{
-                    top: `${10 + index * 25}%`,
-                    left: `${10 + (index % 2) * 55}%`,
-                    width: '50px',
-                    height: '50px',
-                  }}
-                >
-                  <LottieAnimation animName={anim} />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Recording Area */}
@@ -769,57 +619,6 @@ function CreatePageContent() {
         <p>You just cast a spell. ✨</p>
       </footer>
 
-      {/* Hidden SVG Symbols for keyword animations */}
-      <svg xmlns="http://www.w3.org/2000/svg" className="hidden">
-        <defs>
-          {/* Flower symbol */}
-          <symbol id="svg-flower" viewBox="0 0 100 100">
-            <ellipse cx="50" cy="30" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" />
-            <ellipse cx="70" cy="50" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(72, 50, 50)', transformOrigin: '50px 50px' }} />
-            <ellipse cx="65" cy="72" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(144, 50, 50)', transformOrigin: '50px 50px' }} />
-            <ellipse cx="35" cy="72" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(216, 50, 50)', transformOrigin: '50px 50px' }} />
-            <ellipse cx="30" cy="50" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(288, 50, 50)', transformOrigin: '50px 50px' }} />
-            <circle cx="50" cy="50" r="10" fill="#fbbf24" />
-          </symbol>
-          
-          {/* Heart symbol */}
-          <symbol id="svg-heart" viewBox="0 0 100 100">
-            <path 
-              d="M50 88 C50 88 10 60 10 35 C10 20 25 10 40 15 C45 17 50 25 50 25 C50 25 55 17 60 15 C75 10 90 20 90 35 C90 60 50 88 50 88Z" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="3" 
-              className="draw-path"
-            />
-          </symbol>
-          
-          {/* Star symbol */}
-          <symbol id="svg-star" viewBox="0 0 100 100">
-            <path 
-              d="M50 10 L58 38 L88 42 L66 62 L72 90 L50 76 L28 90 L34 62 L12 42 L42 38 Z" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="3" 
-              className="draw-path"
-            />
-          </symbol>
-          
-          {/* Smile symbol */}
-          <symbol id="svg-smile" viewBox="0 0 100 100">
-            <circle cx="35" cy="40" r="8" fill="none" stroke="white" strokeWidth="3" className="draw-path" />
-            <circle cx="65" cy="40" r="8" fill="none" stroke="white" strokeWidth="3" className="draw-path" />
-            <path 
-              d="M25 65 Q50 90 75 65" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="3" 
-              strokeLinecap="round"
-              className="draw-path"
-            />
-          </symbol>
-        </defs>
-      </svg>
-
       {/* CSS for animations */}
       <style jsx global>{`
         @keyframes popIn {
@@ -834,26 +633,6 @@ function CreatePageContent() {
         }
         .animate-bounce-in {
           animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        
-        /* SVG drawing animation */
-        .draw-path {
-          stroke-dasharray: 400;
-          stroke-dashoffset: 400;
-        }
-        
-        @keyframes draw {
-          to {
-            stroke-dashoffset: 0;
-          }
-        }
-        
-        .animate-draw {
-          animation: draw 1s ease-out forwards;
-        }
-        
-        .svg-stage svg {
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
       `}</style>
     </div>
