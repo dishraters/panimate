@@ -20,6 +20,8 @@ const THEMES = [
   { id: 'congrats', emoji: '🎊', name: 'Congrats', color: '#8b5cf6', bg: 'from-violet-400 to-purple-400', text: 'Congratulations!' },
 ]
 
+const MAX_BUBBLES = 12
+
 export default function CreatePage() {
   const router = useRouter()
   
@@ -39,20 +41,26 @@ function CreatePageContent() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [selectedTheme, setSelectedTheme] = useState(THEMES[0])
   const [isRecording, setIsRecording] = useState(false)
+  const [showDone, setShowDone] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
   const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string; tier: string} | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [cardId, setCardId] = useState('')
+  const [wordBubbles, setWordBubbles] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [browserSupported, setBrowserSupported] = useState(true)
   
   const recognitionRef = useRef<any>(null)
+  const lastFinalRef = useRef('')
 
   useEffect(() => {
     // Check for Web Speech API
     const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
     
     if (!SpeechRecognition) {
-      alert('Speech recognition not supported in this browser. Try Chrome or Edge.')
+      setBrowserSupported(false)
+      setError('Speech recognition is not supported in this browser. Please use Chrome or Edge for the best experience.')
       return
     }
 
@@ -66,29 +74,48 @@ function CreatePageContent() {
       let final = ''
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          final += transcript + ' '
+        const result = event.results[i]
+        const text = result[0].transcript.trim()
+        if (result.isFinal && text) {
+          final += text + ' '
         } else {
-          interim += transcript
+          interim += text
         }
       }
       
       if (final) {
-        setTranscript(prev => prev + final)
+        const newText = lastFinalRef.current + final
+        lastFinalRef.current = newText
+        setTranscript(newText)
+        
+        // Add words as bubbles
+        const words = final.trim().split(/\s+/)
+        setWordBubbles(prev => {
+          const updated = [...prev, ...words].slice(-MAX_BUBBLES)
+          return updated
+        })
       }
       setInterimTranscript(interim)
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error)
+      if (event.error === 'not-allowed') {
+        setError('Microphone access was denied. Please allow microphone access in your browser settings and try again.')
+      } else if (event.error !== 'no-speech') {
+        setError(`Speech recognition error: ${event.error}`)
+      }
       setIsRecording(false)
     }
 
     recognition.onend = () => {
       if (isRecording) {
         // Restart if still supposed to be recording
-        recognition.start()
+        try {
+          recognition.start()
+        } catch (e) {
+          console.error('Failed to restart recognition:', e)
+        }
       }
     }
 
@@ -96,29 +123,53 @@ function CreatePageContent() {
 
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop()
+        try {
+          recognitionRef.current.stop()
+        } catch (e) {}
       }
     }
   }, [isRecording])
 
   const startRecording = () => {
+    if (!browserSupported) return
+    
+    setError(null)
     setTranscript('')
     setInterimTranscript('')
+    setWordBubbles([])
+    lastFinalRef.current = ''
+    setShowDone(false)
     setIsRecording(true)
+    
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start()
       } catch (e) {
         console.error('Failed to start recognition:', e)
+        setError('Failed to start recording. Please try again.')
       }
     }
   }
 
   const stopRecording = () => {
     setIsRecording(false)
+    setShowDone(true)
+    setTimeout(() => setShowDone(false), 1500)
+    
     if (recognitionRef.current) {
-      recognitionRef.current.stop()
+      try {
+        recognitionRef.current.stop()
+      } catch (e) {}
     }
+  }
+
+  const clearAll = () => {
+    setTranscript('')
+    setInterimTranscript('')
+    setWordBubbles([])
+    lastFinalRef.current = ''
+    setError(null)
+    setShowDone(false)
   }
 
   const generateCard = () => {
@@ -153,6 +204,8 @@ function CreatePageContent() {
     setInterimTranscript('')
     setGeneratedCard(null)
     setCardId('')
+    setWordBubbles([])
+    lastFinalRef.current = ''
   }
 
   const shareCard = () => {
@@ -299,6 +352,16 @@ function CreatePageContent() {
         </div>
       )}
 
+      {/* Error Banner */}
+      {error && (
+        <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-red-500">⚠️</span>
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Create a Voice Card</h1>
@@ -325,16 +388,36 @@ function CreatePageContent() {
           ))}
         </div>
 
-        {/* Card Preview */}
-        <div className={`w-64 h-40 bg-gradient-to-br ${selectedTheme.bg} rounded-2xl p-4 shadow-lg mb-8 flex items-center justify-center`}>
-          <span className="text-5xl">{selectedTheme.emoji}</span>
+        {/* Card Preview with Word Bubbles */}
+        <div className={`w-64 h-40 bg-gradient-to-br ${selectedTheme.bg} rounded-2xl p-4 shadow-lg mb-8 flex items-center justify-center relative overflow-hidden`}>
+          {/* Pulsing emoji when recording */}
+          <span className={`text-5xl transition-transform ${isRecording ? 'animate-pulse scale-110' : ''}`}>
+            {selectedTheme.emoji}
+          </span>
+          
+          {/* Word bubbles overlay */}
+          <div className="absolute inset-0 p-2 flex flex-wrap content-center justify-center gap-1 items-center">
+            {wordBubbles.map((word, index) => (
+              <span
+                key={index}
+                className="px-2 py-1 bg-white/90 rounded-full text-xs font-medium text-gray-700 shadow-sm animate-bounce-in"
+                style={{
+                  animation: 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  animationDelay: `${index * 0.05}s`,
+                  animationFillMode: 'both',
+                }}
+              >
+                {word}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Recording Area */}
         <div className="w-full max-w-md">
           {/* Transcript Display */}
           <div className="bg-white rounded-2xl p-4 mb-4 min-h-[100px] shadow-inner">
-            <p className="text-gray-800">
+            <p className="text-gray-800 whitespace-pre-wrap">
               {transcript}
               <span className="text-gray-400">{interimTranscript}</span>
               {!transcript && !interimTranscript && (
@@ -345,24 +428,56 @@ function CreatePageContent() {
             </p>
           </div>
 
-          {/* Record Button */}
+          {/* Record Button with Status */}
           <div className="flex flex-col items-center">
+            {/* Status Badge */}
+            <div className="mb-3 flex items-center gap-2">
+              {isRecording ? (
+                <span className="flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  🔴 Listening…
+                </span>
+              ) : showDone ? (
+                <span className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  ✓ Done
+                </span>
+              ) : null}
+            </div>
+
+            {/* Record Button */}
             <button
               onMouseDown={startRecording}
               onMouseUp={stopRecording}
-              onTouchStart={startRecording}
-              onTouchEnd={stopRecording}
-              className={`w-24 h-24 rounded-full flex flex-col items-center justify-center transition-all shadow-xl ${
+              onMouseLeave={stopRecording}
+              onTouchStart={(e) => { e.preventDefault(); startRecording() }}
+              onTouchEnd={(e) => { e.preventDefault(); stopRecording() }}
+              disabled={!browserSupported}
+              className={`w-24 h-24 rounded-full flex flex-col items-center justify-center transition-all shadow-xl relative ${
                 isRecording 
-                  ? 'bg-red-500 scale-90 animate-pulse' 
+                  ? 'bg-red-500 scale-90' 
                   : 'bg-gradient-to-br from-pink-500 to-purple-600 hover:scale-105'
-              }`}
+              } ${!browserSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <span className="text-4xl mb-1">{isRecording ? '⏹️' : '🎤'}</span>
+              {/* Pulsing ring when recording */}
+              {isRecording && (
+                <span className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75"></span>
+              )}
+              <span className="text-4xl mb-1 relative z-10">{isRecording ? '⏹️' : '🎤'}</span>
             </button>
+            
             <p className="text-gray-500 mt-2 text-sm">
               {isRecording ? 'Release to stop' : 'Hold to record'}
             </p>
+
+            {/* Clear Button */}
+            {(transcript || wordBubbles.length > 0) && !isRecording && (
+              <button
+                onClick={clearAll}
+                className="mt-3 px-4 py-2 text-gray-500 text-sm hover:text-gray-700 transition-colors"
+              >
+                🗑️ Clear
+              </button>
+            )}
           </div>
 
           {/* Generate Button */}
@@ -382,6 +497,23 @@ function CreatePageContent() {
       <footer className="p-4 text-center text-gray-500 text-sm">
         <p>You just cast a spell. ✨</p>
       </footer>
+
+      {/* CSS for animations */}
+      <style jsx global>{`
+        @keyframes popIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.5) translateY(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        .animate-bounce-in {
+          animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+      `}</style>
     </div>
   )
 }
