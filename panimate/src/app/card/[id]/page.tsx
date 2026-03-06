@@ -5,11 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 
-// Dynamically import Player to avoid SSR issues  
-const Player = dynamic(() => import('@lottiefiles/react-lottie-player').then((mod) => mod.Player), {
-  ssr: false,
-  loading: () => null
-})
+// Use Lottie player - import directly
+import { Player } from '@lottiefiles/react-lottie-player'
 
 // Card themes
 const THEMES = [
