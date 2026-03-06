@@ -155,17 +155,19 @@ function CreatePageContent() {
     if (!SpeechRecognition) return
     
     setError(null)
-    setTranscript('')
-    setInterimTranscript('')
-    setWordBubbles([])
-    lastFinalRef.current = ''
+    // FIX 3: Do NOT reset transcript or wordBubbles - they should accumulate
+    // setTranscript('')
+    // setInterimTranscript('')
+    // setWordBubbles([])
+    // lastFinalRef.current = ''
     setShowDone(false)
     setIsRecording(true)
     isRecordingRef.current = true
-    setTriggeredKeywords(new Set())
-    setSvgAnimations([])
-    setLottieAnims([])
-    lottieTriggeredRef.current = new Set()
+    // FIX 3: Keep triggered keywords and animations from previous sessions
+    // setTriggeredKeywords(new Set())
+    // setSvgAnimations([])
+    // setLottieAnims([])
+    // lottieTriggeredRef.current = new Set()
     
     // Start audio recording
     try {
@@ -335,6 +337,7 @@ function CreatePageContent() {
   }
 
   const clearAll = () => {
+    // FIX 3: Reset everything only on clear
     setTranscript('')
     setInterimTranscript('')
     setWordBubbles([])
@@ -343,6 +346,11 @@ function CreatePageContent() {
     setShowDone(false)
     setAudioUrl(null)
     setAudioBlob(null)
+    // Also clear animations
+    setTriggeredKeywords(new Set())
+    setSvgAnimations([])
+    setLottieAnims([])
+    lottieTriggeredRef.current = new Set()
   }
 
   const generateCard = () => {
@@ -490,7 +498,7 @@ function CreatePageContent() {
                 className={`px-4 py-2 rounded-full font-bold text-sm transition-all ${
                   isSelected 
                     ? tierKey === 'free' ? 'bg-gray-800 text-white' 
-                    : tierKey === 'pro' ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : tierKey === 'pro' ? 'bg-gradient-to-r from-amber-500 to-amber-700 text-white'
                     : 'bg-purple-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
@@ -578,16 +586,25 @@ function CreatePageContent() {
           ))}
         </div>
 
-        {/* Guided Script Prompt */}
-        {!transcript && !isRecording && (
+        {/* Guided Script Prompt - Only show on Pro tier, stays visible during recording */}
+        {/* FIX 2: Script prompt stays visible while recording - only hidden after card is generated */}
+        {!generatedCard && selectedTier !== 'free' && (
           <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl max-w-md">
-            <p className="text-sm text-amber-800 font-medium mb-2">💡 Try saying this:</p>
+            <p className="text-sm text-amber-800 font-medium mb-2">💡 Say this out loud:</p>
             <p className="text-lg text-amber-900 italic">"{GUIDED_SCRIPT}"</p>
           </div>
         )}
 
         {/* Card Preview with Word Bubbles & SVG Animations */}
-        <div className={`w-64 h-40 bg-gradient-to-br ${selectedTheme.bg} rounded-2xl p-4 shadow-lg mb-8 flex items-center justify-center relative overflow-hidden`}>
+        <div className={`w-64 h-40 bg-gradient-to-br ${selectedTheme.bg} rounded-2xl p-4 shadow-lg mb-8 flex items-center justify-center relative overflow-hidden ${
+          selectedTier === 'pro' ? 'border-2 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)]' : ''
+        }`}>
+          {/* Pro Badge */}
+          {selectedTier === 'pro' && (
+            <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 to-amber-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+              ✨ Pro
+            </div>
+          )}
           {/* Pulsing emoji when recording */}
           <span className={`text-5xl transition-transform ${isRecording ? 'animate-pulse scale-110' : ''}`}>
             {selectedTheme.emoji}
