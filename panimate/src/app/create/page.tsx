@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useSearchParams } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 // Pricing tiers
@@ -22,6 +22,16 @@ const THEMES = [
 
 export default function CreatePage() {
   const router = useRouter()
+  
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-100 flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+      <CreatePageContent />
+    </Suspense>
+  )
+}
+
+function CreatePageContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const initialTier = (searchParams.get('tier') as keyof typeof TIERS) || 'free'
   
@@ -35,7 +45,7 @@ export default function CreatePage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [cardId, setCardId] = useState('')
   
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
     // Check for Web Speech API
@@ -374,12 +384,4 @@ export default function CreatePage() {
       </footer>
     </div>
   )
-}
-
-// Add type declarations for Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
-  }
 }
