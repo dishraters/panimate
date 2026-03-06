@@ -275,10 +275,14 @@ function CreatePageContent() {
     setTimeout(() => {
       // Generate a unique card ID
       const id = Math.random().toString(36).substring(2, 10)
+      
+      // Create object URL from audio blob if it exists
+      const audioObjectUrl = audioBlob ? URL.createObjectURL(audioBlob) : ''
+      
       setCardId(id)
       setGeneratedCard({
         text: transcript.trim(),
-        audioUrl: '',
+        audioUrl: audioObjectUrl,
         tier: selectedTier,
       })
       setIsGenerating(false)
@@ -344,10 +348,10 @@ function CreatePageContent() {
                   />
                 )}
                 {/* Audio playback (Pro tier) */}
-                {isPro && audioBlob && (
-                  <audio controls autoPlay src={URL.createObjectURL(audioBlob)} style={{ width: '100%', marginTop: 8, borderRadius: 8 }} />
+                {isPro && generatedCard.audioUrl && (
+                  <audio controls src={generatedCard.audioUrl} style={{ width: '100%', marginTop: 8, borderRadius: 8 }} />
                 )}
-                {isPro && !audioBlob && (
+                {isPro && !generatedCard.audioUrl && (
                   <p className="text-gray-400 text-sm mt-2">🔊 Play voice message</p>
                 )}
                 <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
