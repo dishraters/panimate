@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Player } from '@lottiefiles/react-lottie-player'
+import dynamic from 'next/dynamic'
+
+// Dynamically import Lottie Player to avoid SSR issues
+const Player = dynamic(() => import('@lottiefiles/react-lottie-player').then(mod => mod.Player), {
+  ssr: false,
+  loading: () => <div className="w-12 h-12" />
+})
 
 // Pricing tiers
 const TIERS = {
@@ -64,7 +70,7 @@ function CreatePageContent() {
   const [showDone, setShowDone] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
-  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string; tier: string} | null>(null)
+  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string; tier: string; lottieAnims?: string[]} | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [cardId, setCardId] = useState('')
   const [wordBubbles, setWordBubbles] = useState<string[]>([])
@@ -125,6 +131,8 @@ function CreatePageContent() {
     isRecordingRef.current = true
     setTriggeredKeywords(new Set())
     setSvgAnimations([])
+    setLottieAnims([])
+    lottieTriggeredRef.current = new Set()
     
     // Create a BRAND NEW SpeechRecognition instance each time
     const recognition = new SpeechRecognition()
@@ -160,9 +168,18 @@ function CreatePageContent() {
         
         // Check for keyword triggers
         const lowerText = final.toLowerCase()
+        
+        // Free tier: SVG keyword triggers
         const foundKeywords = Object.keys(KEYWORD_MAP).filter(keyword => 
           lowerText.includes(keyword)
         )
+        
+        // Pro tier: Lottie keyword triggers
+        const foundLottieKeywords = Object.keys(LOTTIE_KEYWORD_MAP).filter(keyword => 
+          lowerText.includes(keyword)
+        )
+        
+        console.log('keyword check:', final, '-> found:', foundKeywords, 'lottie:', foundLottieKeywords)
         
         foundKeywords.forEach(keyword => {
           if (!triggeredKeywords.has(keyword)) {
@@ -182,6 +199,25 @@ function CreatePageContent() {
             })
           }
         })
+        
+        // Pro tier: Add Lottie animations
+        if (selectedTier !== 'free') {
+          foundLottieKeywords.forEach(keyword => {
+            if (!lottieTriggeredRef.current.has(keyword)) {
+              lottieTriggeredRef.current.add(keyword)
+              const animFile = LOTTIE_KEYWORD_MAP[keyword]
+              console.log('lottie trigger:', keyword, '->', animFile)
+              setLottieAnims(prev => {
+                const updated = [...prev, animFile]
+                // Cap at 3 Lottie animations max
+                if (updated.length > 3) {
+                  updated.shift()
+                }
+                return updated
+              })
+            }
+          })
+        }
       }
       setInterimTranscript(interim)
     }
@@ -263,7 +299,8 @@ function CreatePageContent() {
       setGeneratedCard({
         text: transcript.trim(),
         audioUrl: '',
-        tier: selectedTier
+        tier: selectedTier,
+        lottieAnims: selectedTier !== 'free' ? lottieAnims : undefined
       })
       setIsGenerating(false)
     }, 1500)
@@ -276,6 +313,8 @@ function CreatePageContent() {
     setCardId('')
     setWordBubbles([])
     lastFinalRef.current = ''
+    setLottieAnims([])
+    lottieTriggeredRef.current = new Set()
   }
 
   const shareCard = () => {
@@ -316,6 +355,21 @@ function CreatePageContent() {
                 <div className="bg-white/90 rounded-2xl p-6 shadow-inner">
                   <p className="text-gray-800 text-xl leading-relaxed italic">"{generatedCard.text}"</p>
                 </div>
+                {/* Lottie Animations on Card (Pro tier) */}
+                {generatedCard.tier !== 'free' && generatedCard.lottieAnims && generatedCard.lottieAnims.length > 0 && (
+                  <div className="flex justify-center gap-4 mt-4">
+                    {generatedCard.lottieAnims.map((anim, index) => (
+                      <div key={index} className="w-16 h-16">
+                        <Player
+                          autoplay
+                          loop
+                          src={`/animations/${anim}.json`}
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
               </div>
             </div>
@@ -490,9 +544,9 @@ function CreatePageContent() {
             ))}
           </div>
           
-          {/* SVG Animations Stage */}
+          {/* SVG Animations Stage (Free tier) */}
           <div ref={svgStageRef} className="absolute inset-0 pointer-events-none svg-stage">
-            {svgAnimations.map((anim, index) => (
+            {selectedTier === 'free' && svgAnimations.map((anim, index) => (
               <div 
                 key={anim.id}
                 className="absolute"
@@ -513,6 +567,31 @@ function CreatePageContent() {
               </div>
             ))}
           </div>
+          
+          {/* Lottie Animations Stage (Pro tier) */}
+          {selectedTier !== 'free' && lottieAnims.length > 0 && (
+            <div className="absolute inset-0 pointer-events-none">
+              {lottieAnims.map((anim, index) => (
+                <div 
+                  key={index}
+                  className="absolute"
+                  style={{
+                    top: `${10 + index * 25}%`,
+                    left: `${10 + (index % 2) * 55}%`,
+                    width: '50px',
+                    height: '50px',
+                  }}
+                >
+                  <Player
+                    autoplay
+                    loop
+                    src={`/animations/${anim}.json`}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recording Area */}
