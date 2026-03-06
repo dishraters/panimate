@@ -118,12 +118,14 @@ export default function CardPage() {
                 <p className="text-gray-800 text-xl leading-relaxed italic">"{cardData.text}"</p>
               </div>
               {/* Celebration Animation - always show */}
-              <Player
-                autoplay
-                loop
-                src="/animations/celebration.json"
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.7 }}
-              />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.3)', borderRadius: '1rem' }}>
+                <Player
+                  autoplay
+                  loop
+                  src="/animations/celebration.json"
+                  style={{ width: 150, height: 150 }}
+                />
+              </div>
               <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
             </div>
           </div>
