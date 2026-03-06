@@ -70,9 +70,8 @@ export default function CardPage() {
     fetchCard()
   }, [cardId])
 
-  // Check if this is a Pro card with animations
-  const isPro = cardData?.tier === 'pro' || cardData?.tier === 'premium'
-  const hasAnimations = cardData?.animations && cardData.animations.length > 0
+  // Show animation if animations exist in data (regardless of tier for now)
+  const showAnimation = cardData?.animations && cardData.animations.length > 0
 
   if (loading) {
     return (
