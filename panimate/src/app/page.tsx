@@ -182,45 +182,48 @@ export default function Panimate() {
         <div className="max-w-4xl mx-auto">
           <h3 className="text-3xl font-bold text-center text-gray-800 mb-12">Simple, Transparent Pricing</h3>
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Free Preview */}
+            {/* Free */}
             <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200">
-              <h4 className="text-xl font-bold text-gray-800 mb-2">Free Preview</h4>
+              <h4 className="text-xl font-bold text-gray-800 mb-2">Free</h4>
               <p className="text-4xl font-bold text-gray-600 mb-4">$0</p>
               <ul className="text-gray-600 space-y-2 mb-6">
                 <li>✓ Record your voice</li>
-                <li>✓ AI generates animation preview</li>
+                <li>✓ Animated words appear</li>
                 <li>✓ 15 second preview</li>
-                <li>✓ Share to social</li>
+                <li>✓ Share via link</li>
               </ul>
-              <button className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-bold">Try Free</button>
+              <Link href="/create" className="block w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-bold text-center hover:bg-gray-300">Try Free</Link>
             </div>
 
-            {/* Standard */}
+            {/* Pro - $0.99 */}
             <div className="bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl p-6 text-white relative">
-              <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
-              <h4 className="text-xl font-bold mb-2">Standard Card</h4>
-              <p className="text-4xl font-bold mb-4">$4.99</p>
+              <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-bl-lg">BEST VALUE</div>
+              <h4 className="text-xl font-bold mb-2">Pro</h4>
+              <p className="text-4xl font-bold mb-4">$0.99</p>
               <ul className="text-white/90 space-y-2 mb-6">
                 <li>✓ Everything in Free</li>
-                <li>✓ Full 60 second animation</li>
-                <li>✓ HD quality download</li>
-                <li>✓ Multiple designs</li>
+                <li>✓ Enhanced animations</li>
+                <li>✓ Smooth transitions</li>
+                <li>✓ 30 seconds</li>
+                <li>✓ HD download</li>
               </ul>
-              <button className="w-full bg-white text-pink-600 py-3 rounded-lg font-bold hover:bg-gray-100">Get Standard</button>
+              <Link href="/create?tier=pro" className="block w-full bg-white text-pink-600 py-3 rounded-lg font-bold text-center hover:bg-gray-100">Get Pro</Link>
             </div>
 
-            {/* Premium */}
-            <div className="bg-gray-50 rounded-xl p-6 border-2 border-purple-200">
-              <h4 className="text-xl font-bold text-gray-800 mb-2">Premium Bundle</h4>
-              <p className="text-4xl font-bold text-gray-600 mb-4">$9.99</p>
+            {/* Premium - $10 */}
+            <div className="bg-gray-50 rounded-xl p-6 border-2 border-purple-200 relative">
+              <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">HANDCRAFTED</div>
+              <h4 className="text-xl font-bold text-gray-800 mb-2">Premium</h4>
+              <p className="text-4xl font-bold text-gray-600 mb-4">$10</p>
               <ul className="text-gray-600 space-y-2 mb-6">
-                <li>✓ Everything in Standard</li>
-                <li>✓ 2-minute animation</li>
+                <li>✓ Everything in Pro</li>
+                <li>✓ Manual animation review</li>
+                <li>✓ Custom edits included</li>
+                <li>✓ 60 seconds</li>
                 <li>✓ 4K Ultra HD</li>
-                <li>✓ Priority processing</li>
-                <li>✓ 5 cards for $19.99</li>
+                <li>✓ Priority delivery</li>
               </ul>
-              <button className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700">Get Premium</button>
+              <Link href="/create?tier=premium" className="block w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-center hover:bg-purple-700">Get Premium</Link>
             </div>
           </div>
         </div>

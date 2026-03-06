@@ -1,7 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef, useEffect, useSearchParams } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+
+// Pricing tiers
+const TIERS = {
+  free: { id: 'free', name: 'Free', price: 0, duration: '15 sec', features: ['Animated words', 'Share via link'], color: 'gray' },
+  pro: { id: 'pro', name: 'Pro', price: 0.99, duration: '30 sec', features: ['Enhanced animations', 'Smooth transitions', 'HD download'], color: 'pink' },
+  premium: { id: 'premium', name: 'Premium', price: 10, duration: '60 sec', features: ['Manual review', 'Custom edits', '4K download', 'Priority'], color: 'purple' },
+}
 
 // Card themes
 const THEMES = [
@@ -15,11 +22,16 @@ const THEMES = [
 
 export default function CreatePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialTier = (searchParams.get('tier') as keyof typeof TIERS) || 'free'
+  
+  const [selectedTier, setSelectedTier] = useState<keyof typeof TIERS>(initialTier)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [selectedTheme, setSelectedTheme] = useState(THEMES[0])
   const [isRecording, setIsRecording] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
-  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string} | null>(null)
+  const [generatedCard, setGeneratedCard] = useState<{text: string; audioUrl: string; tier: string} | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [cardId, setCardId] = useState('')
   
@@ -105,6 +117,11 @@ export default function CreatePage() {
       return
     }
 
+    // Show upgrade modal if on free tier and they want more
+    if (selectedTier === 'free') {
+      setShowUpgradeModal(true)
+    }
+
     setIsGenerating(true)
     
     // Simulate card generation
@@ -114,7 +131,8 @@ export default function CreatePage() {
       setCardId(id)
       setGeneratedCard({
         text: transcript.trim(),
-        audioUrl: ''
+        audioUrl: '',
+        tier: selectedTier
       })
       setIsGenerating(false)
     }, 1500)
@@ -147,6 +165,12 @@ export default function CreatePage() {
           <div className="w-full max-w-md">
             {/* Card Preview */}
             <div className={`bg-gradient-to-br ${selectedTheme.bg} rounded-3xl p-8 shadow-2xl text-center relative overflow-hidden`}>
+              {/* Tier Badge */}
+              {generatedCard.tier !== 'free' && (
+                <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full text-xs font-bold text-gray-800">
+                  {TIERS[generatedCard.tier as keyof typeof TIERS]?.name || 'Pro'}
+                </div>
+              )}
               {/* Decorative elements */}
               <div className="absolute top-4 left-4 text-4xl">{selectedTheme.emoji}</div>
               <div className="absolute top-4 right-4 text-4xl">✨</div>
@@ -199,6 +223,71 @@ export default function CreatePage() {
         <button onClick={() => router.push('/')} className="text-2xl font-bold text-pink-600">✨ Panimate</button>
         <a href="/" className="text-gray-500 hover:text-gray-700">← Back</a>
       </header>
+
+      {/* Tier Selector */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-pink-100 py-3 px-4">
+        <div className="max-w-2xl mx-auto flex justify-center gap-3">
+          {(Object.keys(TIERS) as Array<keyof typeof TIERS>).map((tierKey) => {
+            const tier = TIERS[tierKey]
+            const isSelected = selectedTier === tierKey
+            return (
+              <button
+                key={tierKey}
+                onClick={() => setSelectedTier(tierKey)}
+                className={`px-4 py-2 rounded-full font-bold text-sm transition-all ${
+                  isSelected 
+                    ? tierKey === 'free' ? 'bg-gray-800 text-white' 
+                    : tierKey === 'pro' ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                    : 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {tier.name} - ${tier.price}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-center text-gray-500 text-xs mt-2">
+          {TIERS[selectedTier].duration} • {TIERS[selectedTier].features[0]}
+        </p>
+      </div>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Unlock More Magic ✨</h3>
+            <p className="text-gray-600 mb-4">Upgrade to get enhanced animations and longer videos!</p>
+            <div className="space-y-2 mb-4">
+              {(Object.keys(TIERS) as Array<keyof typeof TIERS>).filter(t => t !== 'free').map((tierKey) => {
+                const tier = TIERS[tierKey]
+                return (
+                  <button
+                    key={tierKey}
+                    onClick={() => {
+                      setSelectedTier(tierKey)
+                      setShowUpgradeModal(false)
+                    }}
+                    className="w-full p-3 rounded-lg border-2 border-pink-200 hover:border-pink-500 hover:bg-pink-50 transition-all text-left"
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-gray-800">{tier.name}</span>
+                      <span className="font-bold text-pink-600">${tier.price}</span>
+                    </div>
+                    <p className="text-sm text-gray-500">{tier.duration}</p>
+                  </button>
+                )
+              })}
+            </div>
+            <button 
+              onClick={() => setShowUpgradeModal(false)}
+              className="w-full text-gray-500 text-sm py-2"
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
