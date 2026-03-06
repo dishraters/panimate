@@ -319,7 +319,7 @@ function CreatePageContent() {
     setCardId(cardId)
     setGeneratedCard({
       text: transcript.trim(),
-      audioUrl: audioUrl,
+      audioUrl: audioUrl || '',
       tier: selectedTier,
     })
     setIsGenerating(false)
