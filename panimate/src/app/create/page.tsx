@@ -66,6 +66,7 @@ function CreatePageContent() {
   const animationIdRef = useRef(0)
   
   const recognitionRef = useRef<any>(null)
+  const isRecordingRef = useRef(false)
   const lastFinalRef = useRef('')
   const svgStageRef = useRef<HTMLDivElement>(null)
 
@@ -86,15 +87,33 @@ function CreatePageContent() {
   }, [svgAnimations.length])
 
   useEffect(() => {
-    // Check for Web Speech API
+    // Check for Web Speech API support only
     const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
     
     if (!SpeechRecognition) {
       setBrowserSupported(false)
       setError('Speech recognition is not supported in this browser. Please use Chrome or Edge for the best experience.')
-      return
     }
+  }, [])
 
+  const startRecording = () => {
+    if (!browserSupported) return
+    
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) return
+    
+    setError(null)
+    setTranscript('')
+    setInterimTranscript('')
+    setWordBubbles([])
+    lastFinalRef.current = ''
+    setShowDone(false)
+    setIsRecording(true)
+    isRecordingRef.current = true
+    setTriggeredKeywords(new Set())
+    setSvgAnimations([])
+    
+    // Create a BRAND NEW SpeechRecognition instance each time
     const recognition = new SpeechRecognition()
     recognition.continuous = true
     recognition.interimResults = true
@@ -156,17 +175,17 @@ function CreatePageContent() {
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error)
+      // Ignore 'aborted' and 'no-speech' errors - don't show to user
       if (event.error === 'not-allowed') {
         setError('Microphone access was denied. Please allow microphone access in your browser settings and try again.')
-      } else if (event.error !== 'no-speech') {
+      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
         setError(`Speech recognition error: ${event.error}`)
       }
-      setIsRecording(false)
     }
 
     recognition.onend = () => {
-      if (isRecording) {
-        // Restart if still supposed to be recording
+      // Auto-restart only if still supposed to be recording
+      if (isRecordingRef.current) {
         try {
           recognition.start()
         } catch (e) {
@@ -175,41 +194,21 @@ function CreatePageContent() {
       }
     }
 
+    // Store the instance in ref
     recognitionRef.current = recognition
-
-    return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop()
-        } catch (e) {}
-      }
-    }
-  }, [isRecording])
-
-  const startRecording = () => {
-    if (!browserSupported) return
     
-    setError(null)
-    setTranscript('')
-    setInterimTranscript('')
-    setWordBubbles([])
-    lastFinalRef.current = ''
-    setShowDone(false)
-    setIsRecording(true)
-    setTriggeredKeywords(new Set())
-    setSvgAnimations([])
-    
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start()
-      } catch (e) {
-        console.error('Failed to start recognition:', e)
-        setError('Failed to start recording. Please try again.')
-      }
+    try {
+      recognition.start()
+    } catch (e) {
+      console.error('Failed to start recognition:', e)
+      setError('Failed to start recording. Please try again.')
+      isRecordingRef.current = false
+      setIsRecording(false)
     }
   }
 
   const stopRecording = () => {
+    isRecordingRef.current = false
     setIsRecording(false)
     setShowDone(true)
     setTimeout(() => setShowDone(false), 1500)
@@ -536,9 +535,9 @@ function CreatePageContent() {
 
             {/* Record Button */}
             <button
-              onMouseDown={startRecording}
-              onMouseUp={stopRecording}
-              onMouseLeave={stopRecording}
+              onMouseDown={(e) => { e.preventDefault(); startRecording() }}
+              onMouseUp={(e) => { e.preventDefault(); stopRecording() }}
+              onMouseLeave={(e) => { e.preventDefault(); stopRecording() }}
               onTouchStart={(e) => { e.preventDefault(); startRecording() }}
               onTouchEnd={(e) => { e.preventDefault(); stopRecording() }}
               disabled={!browserSupported}
