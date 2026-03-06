@@ -275,8 +275,28 @@ function CreatePageContent() {
     // Generate a unique card ID
     const cardId = Math.random().toString(36).substring(2, 10)
     
-    // Create object URL from audio blob if it exists
-    const audioObjectUrl = audioBlob ? URL.createObjectURL(audioBlob) : ''
+    // Upload audio to Supabase storage if it exists
+    let audioUrl = null
+    if (audioBlob) {
+      try {
+        const fileName = `${cardId}.webm`
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('audio')
+          .upload(fileName, audioBlob, { contentType: 'audio/webm' })
+        
+        if (uploadError) {
+          console.error('Error uploading audio:', uploadError)
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('audio')
+            .getPublicUrl(fileName)
+          audioUrl = urlData.publicUrl
+          console.log('Audio uploaded:', audioUrl)
+        }
+      } catch (err) {
+        console.error('Audio upload failed:', err)
+      }
+    }
     
     // Save to Supabase
     const { data, error } = await supabase
@@ -286,7 +306,7 @@ function CreatePageContent() {
         transcript: transcript.trim(),
         category: selectedTheme.id,
         tier: selectedTier,
-        audio_url: audioObjectUrl || null,
+        audio_url: audioUrl,
         animations: isPro ? ['celebration'] : []
       })
 
@@ -299,7 +319,7 @@ function CreatePageContent() {
     setCardId(cardId)
     setGeneratedCard({
       text: transcript.trim(),
-      audioUrl: audioObjectUrl,
+      audioUrl: audioUrl,
       tier: selectedTier,
     })
     setIsGenerating(false)
