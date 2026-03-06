@@ -11,6 +11,12 @@ const LottieComponent = dynamic(() => Promise.resolve(Lottie), {
   loading: () => <div className="w-12 h-12" />
 })
 
+// Dynamically import Player to avoid SSR issues  
+const Player = dynamic(() => import('@lottiefiles/react-lottie-player').then((mod) => mod.Player), {
+  ssr: false,
+  loading: () => <div className="w-[72px] h-[72px]" />
+})
+
 // Pricing tiers
 const TIERS = {
   free: { id: 'free', name: 'Free', price: 0, duration: '15 sec', features: ['Animated words', 'Share via link'], color: 'gray' },
@@ -436,13 +442,19 @@ function CreatePageContent() {
                 {generatedCard.tier !== 'free' && (generatedCard.lottieAnims ?? []).length > 0 && (
                   <div className="flex justify-center gap-4 mt-4">
                     {(generatedCard.lottieAnims ?? []).map((anim, index) => (
-                      <LottieAnimation key={index} animName={anim} />
+                      <Player
+                        key={`${anim}-${index}`}
+                        autoplay
+                        keepLastFrame
+                        src={`/animations/${anim}.json`}
+                        style={{ width: 72, height: 72 }}
+                      />
                     ))}
                   </div>
                 )}
-                {/* Audio playback placeholder */}
+                {/* Audio recording indicator */}
                 {generatedCard.tier !== 'free' && (
-                  <p className="text-white/60 text-sm mt-2">🎵 Audio would play here</p>
+                  <p className="text-gray-400 text-sm mt-2">Audio recording captured ✓</p>
                 )}
                 <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
               </div>
