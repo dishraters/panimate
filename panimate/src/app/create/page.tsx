@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Lottie from 'lottie-react'
+import { supabase } from '@/lib/supabase'
 
 // Dynamically import Lottie component to avoid SSR issues
 const LottieComponent = dynamic(() => Promise.resolve(Lottie), {
@@ -258,7 +259,7 @@ function CreatePageContent() {
     setAudioBlob(null)
   }
 
-  const generateCard = () => {
+  const generateCard = async () => {
     if (!transcript.trim()) {
       alert('Please record a message first!')
       return
@@ -271,22 +272,36 @@ function CreatePageContent() {
 
     setIsGenerating(true)
     
-    // Simulate card generation
-    setTimeout(() => {
-      // Generate a unique card ID
-      const id = Math.random().toString(36).substring(2, 10)
-      
-      // Create object URL from audio blob if it exists
-      const audioObjectUrl = audioBlob ? URL.createObjectURL(audioBlob) : ''
-      
-      setCardId(id)
-      setGeneratedCard({
-        text: transcript.trim(),
-        audioUrl: audioObjectUrl,
-        tier: selectedTier,
+    // Generate a unique card ID
+    const cardId = Math.random().toString(36).substring(2, 10)
+    
+    // Create object URL from audio blob if it exists
+    const audioObjectUrl = audioBlob ? URL.createObjectURL(audioBlob) : ''
+    
+    // Save to Supabase
+    const { data, error } = await supabase
+      .from('cards')
+      .insert({
+        id: cardId,
+        transcript: transcript.trim(),
+        category: selectedTheme.id,
+        audio_url: audioObjectUrl || null,
+        animations: isPro ? ['celebration'] : []
       })
-      setIsGenerating(false)
-    }, 1500)
+
+    if (error) {
+      console.error('Error saving card to Supabase:', error)
+    } else {
+      console.log('Card saved to Supabase:', data)
+    }
+    
+    setCardId(cardId)
+    setGeneratedCard({
+      text: transcript.trim(),
+      audioUrl: audioObjectUrl,
+      tier: selectedTier,
+    })
+    setIsGenerating(false)
   }
 
   const resetAndRecordAgain = () => {
