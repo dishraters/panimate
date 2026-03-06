@@ -52,21 +52,25 @@ const GUIDED_SCRIPT = "Hi Mom — you are so beautiful, you make me smile, and I
 // Helper component to load and display Lottie animations
 function LottieAnimation({ animName }: { animName: string }) {
   const [animationData, setAnimationData] = useState<any>(null)
+  const [hasError, setHasError] = useState(false)
   
   useEffect(() => {
     const loadAnimation = async () => {
       try {
         const response = await fetch(`/animations/${animName}.json`)
+        if (!response.ok) throw new Error(`Failed to load ${animName}`)
         const data = await response.json()
         setAnimationData(data)
       } catch (err) {
-        console.error(`Failed to load animation ${animName}:`, err)
+        console.warn('Lottie failed to load:', animName, err)
+        setHasError(true)
       }
     }
+    setHasError(false)
     loadAnimation()
   }, [animName])
   
-  if (!animationData) return <div className="w-full h-full" />
+  if (hasError || !animationData) return <div className="w-full h-full" />
   
   return <Lottie animationData={animationData} loop autoplay style={{ width: '100%', height: '100%' }} />
 }
@@ -186,8 +190,7 @@ function CreatePageContent() {
       mediaRecorder.start()
       console.log('Audio recording started')
     } catch (err) {
-      console.error('Failed to start audio recording:', err)
-      setError('Microphone access was denied. Please allow microphone access in your browser settings.')
+      console.warn('Audio capture not available:', err)
     }
     
     // Create a BRAND NEW SpeechRecognition instance each time
@@ -422,9 +425,9 @@ function CreatePageContent() {
                   <p className="text-gray-800 text-xl leading-relaxed italic">"{generatedCard.text}"</p>
                 </div>
                 {/* Lottie Animations on Card (Pro tier) */}
-                {generatedCard.tier !== 'free' && generatedCard.lottieAnims && generatedCard.lottieAnims.length > 0 && (
+                {generatedCard.tier !== 'free' && (generatedCard.lottieAnims ?? []).length > 0 && (
                   <div className="flex justify-center gap-4 mt-4">
-                    {generatedCard.lottieAnims.map((anim, index) => (
+                    {(generatedCard.lottieAnims ?? []).map((anim, index) => (
                       <LottieAnimation key={index} animName={anim} />
                     ))}
                   </div>
@@ -632,7 +635,7 @@ function CreatePageContent() {
           </div>
           
           {/* Lottie Animations Stage (Pro tier) */}
-          {selectedTier !== 'free' && lottieAnims.length > 0 && (
+          {selectedTier !== 'free' && (lottieAnims ?? []).length > 0 && (
             <div className="absolute inset-0 pointer-events-none">
               {lottieAnims.map((anim, index) => (
                 <div 
