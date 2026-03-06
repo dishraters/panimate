@@ -22,6 +22,17 @@ const THEMES = [
 
 const MAX_BUBBLES = 12
 
+// Keyword to SVG symbol mapping
+const KEYWORD_MAP: Record<string, string> = {
+  'love': 'svg-heart', 'loved': 'svg-heart', 'heart': 'svg-heart',
+  'mom': 'svg-flower', 'mother': 'svg-flower', 'beautiful': 'svg-flower', 'pretty': 'svg-flower',
+  'smart': 'svg-star', 'amazing': 'svg-star', 'wonderful': 'svg-star',
+  'smile': 'svg-smile', 'smiling': 'svg-smile', 'funny': 'svg-smile', 'happy': 'svg-smile', 'laugh': 'svg-smile',
+}
+
+// Guided script for user to say
+const GUIDED_SCRIPT = "Hi Mom — you are so beautiful, you make me smile, and I love you."
+
 export default function CreatePage() {
   const router = useRouter()
   
@@ -50,9 +61,29 @@ function CreatePageContent() {
   const [wordBubbles, setWordBubbles] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [browserSupported, setBrowserSupported] = useState(true)
+  const [triggeredKeywords, setTriggeredKeywords] = useState<Set<string>>(new Set())
+  const [svgAnimations, setSvgAnimations] = useState<Array<{id: number; symbolId: string}>>([])
+  const animationIdRef = useRef(0)
   
   const recognitionRef = useRef<any>(null)
   const lastFinalRef = useRef('')
+  const svgStageRef = useRef<HTMLDivElement>(null)
+
+  // Trigger animation reflow when new SVG is added
+  useEffect(() => {
+    if (svgStageRef.current && svgAnimations.length > 0) {
+      // Force reflow
+      void svgStageRef.current.offsetWidth
+      // Re-enable animations by toggling a class
+      const svgs = svgStageRef.current.querySelectorAll('svg')
+      svgs.forEach(svg => {
+        svg.classList.remove('animate-draw')
+        // Force reflow using getBoundingClientRect
+        svg.getBoundingClientRect()
+        svg.classList.add('animate-draw')
+      })
+    }
+  }, [svgAnimations.length])
 
   useEffect(() => {
     // Check for Web Speech API
@@ -93,6 +124,31 @@ function CreatePageContent() {
         setWordBubbles(prev => {
           const updated = [...prev, ...words].slice(-MAX_BUBBLES)
           return updated
+        })
+        
+        // Check for keyword triggers
+        const lowerText = final.toLowerCase()
+        const foundKeywords = Object.keys(KEYWORD_MAP).filter(keyword => 
+          lowerText.includes(keyword)
+        )
+        
+        foundKeywords.forEach(keyword => {
+          if (!triggeredKeywords.has(keyword)) {
+            const symbolId = KEYWORD_MAP[keyword]
+            setTriggeredKeywords(prev => {
+              const newSet = new Set(Array.from(prev))
+              newSet.add(keyword)
+              return newSet
+            })
+            setSvgAnimations(prev => {
+              const newAnimations = [...prev, { id: ++animationIdRef.current, symbolId }]
+              // Cap at 4 icons max
+              if (newAnimations.length > 4) {
+                newAnimations.shift()
+              }
+              return newAnimations
+            })
+          }
         })
       }
       setInterimTranscript(interim)
@@ -140,6 +196,8 @@ function CreatePageContent() {
     lastFinalRef.current = ''
     setShowDone(false)
     setIsRecording(true)
+    setTriggeredKeywords(new Set())
+    setSvgAnimations([])
     
     if (recognitionRef.current) {
       try {
@@ -388,7 +446,15 @@ function CreatePageContent() {
           ))}
         </div>
 
-        {/* Card Preview with Word Bubbles */}
+        {/* Guided Script Prompt */}
+        {!transcript && !isRecording && (
+          <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl max-w-md">
+            <p className="text-sm text-amber-800 font-medium mb-2">💡 Try saying this:</p>
+            <p className="text-lg text-amber-900 italic">"{GUIDED_SCRIPT}"</p>
+          </div>
+        )}
+
+        {/* Card Preview with Word Bubbles & SVG Animations */}
         <div className={`w-64 h-40 bg-gradient-to-br ${selectedTheme.bg} rounded-2xl p-4 shadow-lg mb-8 flex items-center justify-center relative overflow-hidden`}>
           {/* Pulsing emoji when recording */}
           <span className={`text-5xl transition-transform ${isRecording ? 'animate-pulse scale-110' : ''}`}>
@@ -409,6 +475,30 @@ function CreatePageContent() {
               >
                 {word}
               </span>
+            ))}
+          </div>
+          
+          {/* SVG Animations Stage */}
+          <div ref={svgStageRef} className="absolute inset-0 pointer-events-none svg-stage">
+            {svgAnimations.map((anim, index) => (
+              <div 
+                key={anim.id}
+                className="absolute"
+                style={{
+                  top: `${15 + index * 20}%`,
+                  left: `${15 + (index % 2) * 50}%`,
+                  width: '40px',
+                  height: '40px',
+                }}
+              >
+                <svg 
+                  viewBox="0 0 100 100" 
+                  className="w-full h-full animate-draw"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <use href={`#${anim.symbolId}`} />
+                </svg>
+              </div>
             ))}
           </div>
         </div>
@@ -498,6 +588,57 @@ function CreatePageContent() {
         <p>You just cast a spell. ✨</p>
       </footer>
 
+      {/* Hidden SVG Symbols for keyword animations */}
+      <svg xmlns="http://www.w3.org/2000/svg" className="hidden">
+        <defs>
+          {/* Flower symbol */}
+          <symbol id="svg-flower" viewBox="0 0 100 100">
+            <ellipse cx="50" cy="30" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" />
+            <ellipse cx="70" cy="50" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(72, 50, 50)', transformOrigin: '50px 50px' }} />
+            <ellipse cx="65" cy="72" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(144, 50, 50)', transformOrigin: '50px 50px' }} />
+            <ellipse cx="35" cy="72" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(216, 50, 50)', transformOrigin: '50px 50px' }} />
+            <ellipse cx="30" cy="50" rx="12" ry="18" fill="none" stroke="white" strokeWidth="3" className="draw-path" style={{ transform: 'rotate(288, 50, 50)', transformOrigin: '50px 50px' }} />
+            <circle cx="50" cy="50" r="10" fill="#fbbf24" />
+          </symbol>
+          
+          {/* Heart symbol */}
+          <symbol id="svg-heart" viewBox="0 0 100 100">
+            <path 
+              d="M50 88 C50 88 10 60 10 35 C10 20 25 10 40 15 C45 17 50 25 50 25 C50 25 55 17 60 15 C75 10 90 20 90 35 C90 60 50 88 50 88Z" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="3" 
+              className="draw-path"
+            />
+          </symbol>
+          
+          {/* Star symbol */}
+          <symbol id="svg-star" viewBox="0 0 100 100">
+            <path 
+              d="M50 10 L58 38 L88 42 L66 62 L72 90 L50 76 L28 90 L34 62 L12 42 L42 38 Z" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="3" 
+              className="draw-path"
+            />
+          </symbol>
+          
+          {/* Smile symbol */}
+          <symbol id="svg-smile" viewBox="0 0 100 100">
+            <circle cx="35" cy="40" r="8" fill="none" stroke="white" strokeWidth="3" className="draw-path" />
+            <circle cx="65" cy="40" r="8" fill="none" stroke="white" strokeWidth="3" className="draw-path" />
+            <path 
+              d="M25 65 Q50 90 75 65" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="3" 
+              strokeLinecap="round"
+              className="draw-path"
+            />
+          </symbol>
+        </defs>
+      </svg>
+
       {/* CSS for animations */}
       <style jsx global>{`
         @keyframes popIn {
@@ -512,6 +653,26 @@ function CreatePageContent() {
         }
         .animate-bounce-in {
           animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        /* SVG drawing animation */
+        .draw-path {
+          stroke-dasharray: 400;
+          stroke-dashoffset: 400;
+        }
+        
+        @keyframes draw {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+        
+        .animate-draw {
+          animation: draw 1s ease-out forwards;
+        }
+        
+        .svg-stage svg {
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
       `}</style>
     </div>
