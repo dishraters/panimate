@@ -84,7 +84,7 @@ export default function Panimate() {
               Panimate
             </h1>
           </div>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <a href="#pricing" className="text-gray-600 hover:text-pink-500 font-medium">Pricing</a>
             <a href="/blog" className="text-gray-600 hover:text-pink-500 font-medium">Blog</a>
             <a href="#waitlist" className="bg-pink-500 text-white px-4 py-2 rounded-full font-medium hover:bg-pink-600">Join Waitlist</a>
