@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
@@ -29,7 +29,10 @@ export default function CardPage() {
   const router = useRouter()
   const cardId = params.id as string
   
-  const [cardData, setCardData] = useState<{text: string; themeId: string; animations?: string[]; tier?: string} | null>(null)
+  const [cardData, setCardData] = useState<{text: string; themeId: string; animations?: string[]; tier?: string; audioUrl?: string} | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [showAnimation, setShowAnimation] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const [loading, setLoading] = useState(true)
   const [theme, setTheme] = useState(THEMES[0])
 
@@ -38,7 +41,7 @@ export default function CardPage() {
       // Try to fetch from Supabase
       const { data, error } = await supabase
         .from('cards')
-        .select('transcript, category, animations, tier')
+        .select('transcript, category, animations, tier, audio_url')
         .eq('id', cardId)
         .single()
       
@@ -47,7 +50,8 @@ export default function CardPage() {
           text: data.transcript,
           themeId: data.category,
           animations: data.animations,
-          tier: data.tier
+          tier: data.tier,
+          audioUrl: data.audio_url
         })
         const foundTheme = THEMES.find(t => t.id === data.category) || THEMES[0]
         setTheme(foundTheme)
@@ -116,7 +120,8 @@ export default function CardPage() {
               <div className="bg-white/90 rounded-2xl p-6 shadow-inner">
                 <p className="text-gray-800 text-xl leading-relaxed italic">"{cardData.text}"</p>
               </div>
-              {/* Celebration Animation - always show */}
+              {/* Celebration Animation - plays when audio starts */}
+              {showAnimation && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.3)', borderRadius: '1rem' }}>
                 <Player
                   autoplay
@@ -125,7 +130,32 @@ export default function CardPage() {
                   style={{ width: 150, height: 150 }}
                 />
               </div>
+              )}
               <p className="text-white/80 text-sm mt-4">— A voice card from Panimate</p>
+              {/* Play Voice Message Button */}
+              {cardData.audioUrl && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => {
+                      if (!cardData?.audioUrl) return
+                      if (!audioRef.current) {
+                        audioRef.current = new Audio(cardData.audioUrl)
+                        audioRef.current.onended = () => {
+                          setIsPlaying(false)
+                          setShowAnimation(false)
+                        }
+                      }
+                      audioRef.current.play()
+                      setIsPlaying(true)
+                      setShowAnimation(true)
+                    }}
+                    disabled={isPlaying}
+                    className="px-6 py-3 bg-white/90 rounded-full font-bold text-gray-800 shadow-lg hover:bg-white hover:scale-105 transition-all disabled:opacity-60"
+                  >
+                    {isPlaying ? '🔊 Playing...' : '▶️ Play voice message'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
