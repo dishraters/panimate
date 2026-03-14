@@ -396,10 +396,45 @@ export default function Panimate() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 bg-gray-900 text-center">
-        <p className="text-gray-400">
-          © 2026 Panimate. All rights reserved. • Made with 💜
-        </p>
+      <footer className="py-12 px-6 bg-gray-900">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h4 className="text-white font-bold mb-4">Product</h4>
+              <div className="flex flex-col gap-2">
+                <a href="/create" className="text-gray-400 hover:text-pink-400">Create Card</a>
+                <a href="/pricing" className="text-gray-400 hover:text-pink-400">Pricing</a>
+                <a href="/blog" className="text-gray-400 hover:text-pink-400">Blog</a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Company</h4>
+              <div className="flex flex-col gap-2">
+                <a href="#" className="text-gray-400 hover:text-pink-400">About</a>
+                <a href="#" className="text-gray-400 hover:text-pink-400">Contact</a>
+                <a href="#" className="text-gray-400 hover:text-pink-400">Careers</a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Legal</h4>
+              <div className="flex flex-col gap-2">
+                <a href="#" className="text-gray-400 hover:text-pink-400">Privacy Policy</a>
+                <a href="#" className="text-gray-400 hover:text-pink-400">Terms of Service</a>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Connect</h4>
+              <div className="flex gap-4">
+                <a href="#" className="text-gray-400 hover:text-pink-400">🐦</a>
+                <a href="#" className="text-gray-400 hover:text-pink-400">📘</a>
+                <a href="#" className="text-gray-400 hover:text-pink-400">📸</a>
+              </div>
+            </div>
+          </div>
+          <div className="text-center pt-8 border-t border-gray-800">
+            <a href="/" className="text-gray-400 hover:text-pink-400">© 2026 Panimate. All rights reserved.</a>
+          </div>
+        </div>
       </footer>
     </div>
   );

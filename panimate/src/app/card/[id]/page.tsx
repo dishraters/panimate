@@ -75,7 +75,7 @@ export default function CardPage() {
   }, [cardId])
 
   // Show animation if animations exist in data (regardless of tier for now)
-  const showAnimation = cardData?.animations && cardData.animations.length > 0
+  const hasAnimations = cardData?.animations && cardData.animations.length > 0
 
   if (loading) {
     return (
@@ -121,7 +121,7 @@ export default function CardPage() {
                 <p className="text-gray-800 text-xl leading-relaxed italic">"{cardData.text}"</p>
               </div>
               {/* Celebration Animation - plays when audio starts */}
-              {showAnimation && (
+              {hasAnimations && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.3)', borderRadius: '1rem' }}>
                 <Player
                   autoplay
