@@ -84,6 +84,7 @@ function CreatePageContent() {
   const [wordBubbles, setWordBubbles] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [browserSupported, setBrowserSupported] = useState(true)
+  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied' | 'unknown'>('unknown')
   
   // Simple Pro check
   const isPro = selectedTier === 'pro' || selectedTier === 'premium'
@@ -98,6 +99,26 @@ function CreatePageContent() {
   
   const recognitionRef = useRef<any>(null)
   const isRecordingRef = useRef(false)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  // Check mic permission on mount
+  useEffect(() => {
+    async function checkPermission() {
+      if (typeof navigator !== 'undefined' && navigator.permissions) {
+        try {
+          const result = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+          setMicPermission(result.state)
+          result.onchange = () => {
+            setMicPermission(result.state)
+          }
+        } catch (e) {
+          // Permission API not supported, will prompt on getUserMedia
+          setMicPermission('unknown')
+        }
+      }
+    }
+    checkPermission()
+  }, [])
   const lastFinalRef = useRef('')
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -110,6 +131,14 @@ function CreatePageContent() {
       setBrowserSupported(false)
       setError('Speech recognition is not supported in this browser. Please use Chrome or Edge for the best experience.')
     }
+    
+    // Cleanup: stop stream when component unmounts
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
+    }
   }, [])
 
   const startRecording = async () => {
@@ -119,23 +148,22 @@ function CreatePageContent() {
     if (!SpeechRecognition) return
     
     setError(null)
-    // FIX 3: Do NOT reset transcript or wordBubbles - they should accumulate
-    // setTranscript('')
-    // setInterimTranscript('')
-    // setWordBubbles([])
-    // lastFinalRef.current = ''
     setShowDone(false)
     setIsRecording(true)
     isRecordingRef.current = true
-    // FIX 3: Keep triggered keywords and animations from previous sessions
-    // setTriggeredKeywords(new Set())
-    // setSvgAnimations([])
-    // setLottieAnims([])
-    // lottieTriggeredRef.current = new Set()
     
-    // Start audio recording
+    // Start audio recording - check permission first or reuse existing stream
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      let stream: MediaStream
+      if (streamRef.current && streamRef.current.active) {
+        // Reuse existing stream
+        stream = streamRef.current
+      } else {
+        // Request new stream with permission
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        streamRef.current = stream
+      }
+      
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
@@ -240,11 +268,12 @@ function CreatePageContent() {
       } catch (e) {}
     }
     
-    // Stop audio recording
+    // Stop audio recording but keep stream for next recording
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
       console.log('Audio recording stopped')
     }
+    // Note: We keep the stream open to avoid re-requesting permission
   }
 
   const clearAll = () => {

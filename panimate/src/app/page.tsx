@@ -23,6 +23,13 @@ export default function Panimate() {
     
     const waitlist = JSON.parse(localStorage.getItem('panimate-waitlist') || '[]');
     setWaitlistCount(waitlist.length);
+    
+    // Capture referral code from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    if (refCode) {
+      localStorage.setItem('panimate-ref', refCode);
+    }
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -31,7 +38,8 @@ export default function Panimate() {
     
     const waitlist = JSON.parse(localStorage.getItem('panimate-waitlist') || '[]');
     if (!waitlist.includes(email)) {
-      waitlist.push(email);
+      const refCode = localStorage.getItem('panimate-ref');
+      waitlist.push({ email, ref: refCode });
       localStorage.setItem('panimate-waitlist', JSON.stringify(waitlist));
       setWaitlistCount(waitlist.length);
     }
@@ -79,10 +87,12 @@ export default function Panimate() {
       <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <span className="text-3xl">✨</span>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-              Panimate
-            </h1>
+            <Link href="/" className="flex items-center gap-2">
+              <span className="text-3xl">✨</span>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+                Panimate
+              </h1>
+            </Link>
           </div>
           <div className="flex items-center gap-4">
             <a href="#pricing" className="text-gray-600 hover:text-pink-500 font-medium">Pricing</a>
@@ -169,9 +179,9 @@ export default function Panimate() {
           </div>
           {selectedOccasion && (
             <div className="text-center mt-8">
-              <a href="#waitlist" className="bg-pink-500 text-white px-8 py-3 rounded-full font-bold hover:bg-pink-600 transition-all">
+              <Link href={`/create?occasion=${selectedOccasion}`} className="bg-pink-500 text-white px-8 py-3 rounded-full font-bold hover:bg-pink-600 transition-all">
                 Create {occasions.find(o => o.id === selectedOccasion)?.label} Card →
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -207,7 +217,7 @@ export default function Panimate() {
                 <li>✓ 30 seconds</li>
                 <li>✓ HD download</li>
               </ul>
-              <Link href="/create?tier=pro" className="block w-full bg-white text-pink-600 py-3 rounded-lg font-bold text-center hover:bg-gray-100">Get Pro</Link>
+              <Link href="/pricing?tier=pro" className="block w-full bg-white text-pink-600 py-3 rounded-lg font-bold text-center hover:bg-gray-100">Get Pro</Link>
             </div>
 
             {/* Premium - $10 */}
@@ -223,14 +233,14 @@ export default function Panimate() {
                 <li>✓ 4K Ultra HD</li>
                 <li>✓ Priority delivery</li>
               </ul>
-              <Link href="/create?tier=premium" className="block w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-center hover:bg-purple-700">Get Premium</Link>
+              <Link href="/pricing?tier=premium" className="block w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-center hover:bg-purple-700">Get Premium</Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-6 bg-white">
+      <section id="how-it-works" className="py-20 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <h3 className="text-3xl font-bold text-center text-gray-800 mb-16">How It Works</h3>
           <div className="grid md:grid-cols-3 gap-8">
@@ -324,13 +334,13 @@ export default function Panimate() {
         <div className="max-w-2xl mx-auto text-center">
           <h3 className="text-2xl font-bold text-white mb-6">Share with Friends</h3>
           <div className="flex gap-4 justify-center">
-            <button className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-medium transition-all">
+            <button onClick={() => share('facebook')} className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-medium transition-all">
               📱 Facebook
             </button>
-            <button className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-medium transition-all">
+            <button onClick={() => share('twitter')} className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-medium transition-all">
               🐦 Twitter
             </button>
-            <button className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-medium transition-all">
+            <button onClick={() => share('instagram')} className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-medium transition-all">
               📸 Instagram
             </button>
           </div>
