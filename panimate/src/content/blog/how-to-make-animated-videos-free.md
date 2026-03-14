@@ -190,7 +190,7 @@ With Panimate:
 - 🎁 **Perfect for any occasion** - Birthdays, holidays, celebrations
 - ✅ **Free preview** - See it before you buy
 
-**[Create Your Personalized Card Today →](https://panimate.agncy.dev)**
+**[Create Your Personalized Card Today →](https://panimate-eosin.vercel.app)**
 
 ## Conclusion
 

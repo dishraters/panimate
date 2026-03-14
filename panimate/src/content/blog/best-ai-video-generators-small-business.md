@@ -178,7 +178,7 @@ Start with free tiers, test your top 2-3 choices, and commit to the one that fit
 
 Try Panimate for free and see how AI video generation can transform your customer outreach.
 
-**[Create Your First Video →](https://panimate.agncy.dev)**
+**[Create Your First Video →](https://panimate-eosin.vercel.app)**
 
 ---
 
